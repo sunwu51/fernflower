@@ -67,7 +67,8 @@ public class StructTypePathEntry {
   @Override
   public final boolean equals(Object o) {
     if (this == o) return true;
-    if (!(o instanceof StructTypePathEntry entry)) return false;
+    if (!(o instanceof StructTypePathEntry)) return false;
+    StructTypePathEntry entry = (StructTypePathEntry)o;
 
     return typePathEntryKind == entry.typePathEntryKind && typeArgumentIndex == entry.typeArgumentIndex;
   }

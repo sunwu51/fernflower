@@ -4,17 +4,18 @@ package org.jetbrains.java.decompiler;
 import org.jetbrains.java.decompiler.main.extern.IFernflowerPreferences;
 import org.junit.Test;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public class JADNamingTest extends SingleClassesTestBase {
 
     @Override
     protected Map<String, Object> getDecompilerOptions() {
-      return Map.of(
-        IFernflowerPreferences.BYTECODE_SOURCE_MAPPING, "1",
-        IFernflowerPreferences.DUMP_ORIGINAL_LINES, "1",
-        IFernflowerPreferences.USE_JAD_VARNAMING, "1"
-      );
+      Map<String, Object> options = new HashMap<>();
+      options.put(IFernflowerPreferences.BYTECODE_SOURCE_MAPPING, "1");
+      options.put(IFernflowerPreferences.DUMP_ORIGINAL_LINES, "1");
+      options.put(IFernflowerPreferences.USE_JAD_VARNAMING, "1");
+      return options;
     }
 
     @Test public void testClassFields() { doTest("pkg/TestJADNaming"); }

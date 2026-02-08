@@ -15,6 +15,7 @@ import org.jetbrains.java.decompiler.modules.decompiler.vars.VarVersionNode;
 import org.jetbrains.java.decompiler.modules.decompiler.vars.VarVersionsGraph;
 import org.jetbrains.java.decompiler.struct.StructMethod;
 import org.jetbrains.java.decompiler.struct.gen.MethodDescriptor;
+import org.jetbrains.java.decompiler.struct.gen.VarType;
 import org.jetbrains.java.decompiler.util.FastSparseSetFactory.FastSparseSet;
 
 import java.io.BufferedOutputStream;
@@ -74,7 +75,7 @@ public final class DotExporter {
   private static String toDotFormat(ControlFlowGraph graph, boolean showMultipleEdges) {
 
     StringBuilder buffer = new StringBuilder();
-    var nl = "\r\n";
+    String nl = "\r\n";
 
     buffer.append("digraph G {").append(nl);
 
@@ -87,11 +88,11 @@ public final class DotExporter {
         .append(']').append(nl);
 
 
-      for (var edge : unique(block.getSuccessors(), showMultipleEdges)) {
+      for (BasicBlock edge : unique(block.getSuccessors(), showMultipleEdges)) {
         buffer.append(block.id).append(" -> ").append(edge.id).append(';').append(nl);
       }
 
-      for (var edge : unique(block.getSuccessorExceptions(), showMultipleEdges)) {
+      for (BasicBlock edge : unique(block.getSuccessorExceptions(), showMultipleEdges)) {
         buffer.append(block.id).append(" -> ").append(edge.id).append(" [style=dotted];").append(nl);
       }
     }
@@ -138,7 +139,7 @@ public final class DotExporter {
 
     buffer.append("digraph G {\r\n");
 
-    for(var block : graph.nodes) {
+    for (DirectNode block : graph.nodes) {
       StringBuilder label = new StringBuilder(block.id);
       if (vars != null && vars.containsKey(block.id)) {
         SFormsFastMapDirect map = vars.get(block.id);
@@ -179,11 +180,11 @@ public final class DotExporter {
     String folder =  DecompilerContext.getProperty(IFernflowerPreferences.DOTS_FOLDER).toString();
     File root = new File(folder + mt.getClassQualifiedName());
     if (!root.isDirectory()) root.mkdirs();
-    var name = new StringBuilder();
+    StringBuilder name = new StringBuilder();
     name.append(mt.getName().replace('<', '_').replace('>', '_'));
     name.append('(');
-    var desc = MethodDescriptor.parseDescriptor(mt.getDescriptor());
-    for (var par : desc.params) {
+    MethodDescriptor desc = MethodDescriptor.parseDescriptor(mt.getDescriptor());
+    for (VarType par : desc.params) {
       name.append(ExprProcessor.getCastTypeName(par, Collections.emptyList())).append(", ");
     }
     if (desc.params.length > 0) {

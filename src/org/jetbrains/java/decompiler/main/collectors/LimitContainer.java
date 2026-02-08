@@ -42,7 +42,7 @@ public class LimitContainer {
 
   public static class LimitExceededDecompilerException extends RuntimeException {
     public LimitExceededDecompilerException(long limit, long actualValue, String type) {
-      super("Limits for %s are exceeded. Current value: %s, limit: %s".formatted(type, actualValue, limit));
+      super(String.format("Limits for %s are exceeded. Current value: %s, limit: %s", type, actualValue, limit));
     }
   }
 }

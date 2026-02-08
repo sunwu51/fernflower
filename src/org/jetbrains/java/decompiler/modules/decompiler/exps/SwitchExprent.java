@@ -91,9 +91,12 @@ public class SwitchExprent extends Exprent {
         List<PooledConstant> arguments = invocationExprent.getBootstrapArguments();
         for (int i = 0; i < arguments.size(); i++) {
           PooledConstant argument = arguments.get(i);
-          if (argument instanceof PrimitiveConstant primitiveConstant && primitiveConstant.value != null) {
-            buf.appendIndent(indent).append("//").append(i).append("->").append(primitiveConstant.value.toString()).appendLineSeparator();
-            tracer.incrementCurrentSourceLine();
+          if (argument instanceof PrimitiveConstant) {
+            PrimitiveConstant primitiveConstant = (PrimitiveConstant)argument;
+            if (primitiveConstant.value != null) {
+              buf.appendIndent(indent).append("//").append(i).append("->").append(primitiveConstant.value.toString()).appendLineSeparator();
+              tracer.incrementCurrentSourceLine();
+            }
           }
         }
         buf.appendIndent(indent);
@@ -116,9 +119,10 @@ public class SwitchExprent extends Exprent {
       return true;
     }
 
-    if (!(o instanceof SwitchExprent sw)) {
+    if (!(o instanceof SwitchExprent)) {
       return false;
     }
+    SwitchExprent sw = (SwitchExprent)o;
 
     return Objects.equals(value, sw.getValue());
   }

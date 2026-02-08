@@ -397,7 +397,8 @@ public final class TryHelper
   private static boolean isValid(Statement stat, VarExprent closeable, ControlFlowGraph graph, boolean nullable) {
     if (nullable) {
       // Check for if statement that contains a null check and a close()
-      if (stat instanceof IfStatement ifStat) {
+      if (stat instanceof IfStatement) {
+        IfStatement ifStat = (IfStatement)stat;
         Exprent condition = ifStat.getHeadexprent().getCondition();
 
         if (condition instanceof FunctionExprent) {
@@ -456,7 +457,8 @@ public final class TryHelper
     }
 
     List<StatEdge> edges = stat.getAllPredecessorEdges();
-    edges.removeIf((edge) -> edge.getSource() instanceof CatchAllStatement catchAll && catchAll.isFinally());
+    edges.removeIf((edge) -> edge.getSource() instanceof CatchAllStatement &&
+                             ((CatchAllStatement)edge.getSource()).isFinally());
     if (exprentIndex == 0 && edges.size() > 2) {
       return;
     }
@@ -694,7 +696,8 @@ public final class TryHelper
       InvocationExprent invocExp = (InvocationExprent)exp;
       if (invocExp.getName().equals("close") && invocExp.getStringDescriptor().equals("()V")) {
         if (invocExp.getInstance() != null && invocExp.getInstance().type == Exprent.EXPRENT_VAR) {
-          if (inTry.type == Statement.StatementType.BASIC_BLOCK && inTry instanceof BasicBlockStatement basicBlockStatement) {
+          if (inTry.type == Statement.StatementType.BASIC_BLOCK && inTry instanceof BasicBlockStatement) {
+            BasicBlockStatement basicBlockStatement = (BasicBlockStatement)inTry;
             BasicBlock block = basicBlockStatement.getBlock();
             for (ExceptionRangeCFG exception : graph.getExceptions()) {
               if (exception.getProtectedRange().contains(block) && exception.getExceptionTypes() == null) {
@@ -794,7 +797,50 @@ public final class TryHelper
     stat.getParent().getStats().removeWithKey(stat.id);
   }
   
-  public record TryStatementJ11(Set<Statement> destinations, VarExprent closeable, boolean nullable, AssignmentExprent assignment, StatEdge pred, CatchStatement tryStatement) {
-    
+  public static final class TryStatementJ11 {
+    private final Set<Statement> destinations;
+    private final VarExprent closeable;
+    private final boolean nullable;
+    private final AssignmentExprent assignment;
+    private final StatEdge pred;
+    private final CatchStatement tryStatement;
+
+    public TryStatementJ11(Set<Statement> destinations,
+                           VarExprent closeable,
+                           boolean nullable,
+                           AssignmentExprent assignment,
+                           StatEdge pred,
+                           CatchStatement tryStatement) {
+      this.destinations = destinations;
+      this.closeable = closeable;
+      this.nullable = nullable;
+      this.assignment = assignment;
+      this.pred = pred;
+      this.tryStatement = tryStatement;
+    }
+
+    public Set<Statement> destinations() {
+      return destinations;
+    }
+
+    public VarExprent closeable() {
+      return closeable;
+    }
+
+    public boolean nullable() {
+      return nullable;
+    }
+
+    public AssignmentExprent assignment() {
+      return assignment;
+    }
+
+    public StatEdge pred() {
+      return pred;
+    }
+
+    public CatchStatement tryStatement() {
+      return tryStatement;
+    }
   }
 }

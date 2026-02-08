@@ -356,7 +356,7 @@ public abstract class Statement implements IMatchable {
     }
 
     switch (type) {
-      case BASIC_BLOCK -> {
+      case BASIC_BLOCK:
         BasicBlockStatement bblock = (BasicBlockStatement)this;
         InstructionSequence seq = bblock.getBlock().getSeq();
 
@@ -369,21 +369,24 @@ public abstract class Statement implements IMatchable {
           }
           isMonitorEnter = (seq.getLastInstr().opcode == CodeConstants.opc_monitorenter);
         }
-      }
-      case SEQUENCE, IF -> {
+        break;
+      case SEQUENCE:
+      case IF:
         containsMonitorExit = false;
         for (Statement st : stats) {
           containsMonitorExit |= st.isContainsMonitorExit();
         }
-      }
-      case SYNCHRONIZED, ROOT, GENERAL -> {
-      }
-      default -> {
+        break;
+      case SYNCHRONIZED:
+      case ROOT:
+      case GENERAL:
+        break;
+      default:
         containsMonitorExit = false;
         for (Statement st : stats) {
           containsMonitorExit |= st.isContainsMonitorExit();
         }
-      }
+        break;
     }
   }
 
@@ -849,9 +852,9 @@ public abstract class Statement implements IMatchable {
   }
 
   protected String toString(int indent) {
-    var buf = new StringBuilder();
+    StringBuilder buf = new StringBuilder();
     buf.append(TextUtil.getIndentString(indent)).append(type).append(": ").append(id);
-    for (var stat : this.stats) {
+    for (Statement stat : this.stats) {
       buf.append(DecompilerContext.getNewLineSeparator());
       buf.append(stat.toString(indent + 1));
     }
@@ -939,17 +942,17 @@ public abstract class Statement implements IMatchable {
 
     for (Entry<MatchProperties, RuleValue> rule : matchNode.getRules().entrySet()) {
       switch (rule.getKey()) {
-        case STATEMENT_TYPE -> {
+        case STATEMENT_TYPE:
           if (this.type != rule.getValue().value) {
             return false;
           }
-        }
-        case STATEMENT_STATSIZE -> {
+          break;
+        case STATEMENT_STATSIZE:
           if (this.stats.size() != (Integer)rule.getValue().value) {
             return false;
           }
-        }
-        case STATEMENT_EXPRSIZE -> {
+          break;
+        case STATEMENT_EXPRSIZE:
           int exprsize = (Integer)rule.getValue().value;
           if (exprsize == -1) {
             if (this.exprents != null) {
@@ -961,12 +964,12 @@ public abstract class Statement implements IMatchable {
               return false;
             }
           }
-        }
-        case STATEMENT_RET -> {
+          break;
+        case STATEMENT_RET:
           if (!engine.checkAndSetVariableValue((String)rule.getValue().value, this)) {
             return false;
           }
-        }
+          break;
       }
     }
 

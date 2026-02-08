@@ -13,76 +13,102 @@ import org.jetbrains.java.decompiler.struct.match.MatchNode.RuleValue;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import static java.util.Map.entry;
-
 public class MatchEngine {
   @SuppressWarnings("SpellCheckingInspection")
-  private static final Map<String, MatchProperties> stat_properties = Map.of(
-    "type", MatchProperties.STATEMENT_TYPE,
-    "ret", MatchProperties.STATEMENT_RET,
-    "position", MatchProperties.STATEMENT_POSITION,
-    "statsize", MatchProperties.STATEMENT_STATSIZE,
-    "exprsize", MatchProperties.STATEMENT_EXPRSIZE,
-    "iftype", MatchProperties.STATEMENT_IFTYPE);
+  private static final Map<String, MatchProperties> stat_properties;
 
   @SuppressWarnings("SpellCheckingInspection")
-  private static final Map<String, MatchProperties> expr_properties = Map.ofEntries(
-    entry("type", MatchProperties.EXPRENT_TYPE),
-    entry("ret", MatchProperties.EXPRENT_RET),
-    entry("position", MatchProperties.EXPRENT_POSITION),
-    entry("functype", MatchProperties.EXPRENT_FUNCTYPE),
-    entry("exittype", MatchProperties.EXPRENT_EXITTYPE),
-    entry("consttype", MatchProperties.EXPRENT_CONSTTYPE),
-    entry("constvalue", MatchProperties.EXPRENT_CONSTVALUE),
-    entry("invclass", MatchProperties.EXPRENT_INVOCATION_CLASS),
-    entry("signature", MatchProperties.EXPRENT_INVOCATION_SIGNATURE),
-    entry("parameter", MatchProperties.EXPRENT_INVOCATION_PARAMETER),
-    entry("index", MatchProperties.EXPRENT_VAR_INDEX),
-    entry("name", MatchProperties.EXPRENT_FIELD_NAME));
+  private static final Map<String, MatchProperties> expr_properties;
 
   @SuppressWarnings("SpellCheckingInspection")
-  private static final Map<String, StatementType> stat_type = Map.of(
-    "if", StatementType.IF,
-    "do", StatementType.DO,
-    "switch", StatementType.SWITCH,
-    "trycatch", StatementType.TRY_CATCH,
-    "basicblock", StatementType.BASIC_BLOCK,
-    "sequence", StatementType.SEQUENCE);
+  private static final Map<String, StatementType> stat_type;
 
-  private static final Map<String, Integer> expr_type = Map.ofEntries(
-    entry("array", Exprent.EXPRENT_ARRAY),
-    entry("assignment", Exprent.EXPRENT_ASSIGNMENT),
-    entry("constant", Exprent.EXPRENT_CONST),
-    entry("exit", Exprent.EXPRENT_EXIT),
-    entry("field", Exprent.EXPRENT_FIELD),
-    entry("function", Exprent.EXPRENT_FUNCTION),
-    entry("if", Exprent.EXPRENT_IF),
-    entry("invocation", Exprent.EXPRENT_INVOCATION),
-    entry("monitor", Exprent.EXPRENT_MONITOR),
-    entry("new", Exprent.EXPRENT_NEW),
-    entry("switch", Exprent.EXPRENT_SWITCH),
-    entry("var", Exprent.EXPRENT_VAR),
-    entry("annotation", Exprent.EXPRENT_ANNOTATION),
-    entry("assert", Exprent.EXPRENT_ASSERT));
+  private static final Map<String, Integer> expr_type;
 
-  private static final Map<String, Integer> expr_func_type = Map.of("eq", FunctionExprent.FUNCTION_EQ);
+  private static final Map<String, Integer> expr_func_type;
 
-  private static final Map<String, Integer> expr_exit_type = Map.of(
-    "return", ExitExprent.EXIT_RETURN,
-    "throw", ExitExprent.EXIT_THROW);
+  private static final Map<String, Integer> expr_exit_type;
 
   @SuppressWarnings("SpellCheckingInspection")
-  private static final Map<String, Integer> stat_if_type = Map.of(
-    "if", IfStatement.IFTYPE_IF,
-    "ifelse", IfStatement.IFTYPE_IFELSE);
+  private static final Map<String, Integer> stat_if_type;
 
-  private static final Map<String, VarType> expr_const_type = Map.of(
-    "null", VarType.VARTYPE_NULL,
-    "string", VarType.VARTYPE_STRING);
+  private static final Map<String, VarType> expr_const_type;
+
+  static {
+    Map<String, MatchProperties> statProperties = new HashMap<>();
+    statProperties.put("type", MatchProperties.STATEMENT_TYPE);
+    statProperties.put("ret", MatchProperties.STATEMENT_RET);
+    statProperties.put("position", MatchProperties.STATEMENT_POSITION);
+    statProperties.put("statsize", MatchProperties.STATEMENT_STATSIZE);
+    statProperties.put("exprsize", MatchProperties.STATEMENT_EXPRSIZE);
+    statProperties.put("iftype", MatchProperties.STATEMENT_IFTYPE);
+    stat_properties = Collections.unmodifiableMap(statProperties);
+
+    Map<String, MatchProperties> exprProperties = new HashMap<>();
+    exprProperties.put("type", MatchProperties.EXPRENT_TYPE);
+    exprProperties.put("ret", MatchProperties.EXPRENT_RET);
+    exprProperties.put("position", MatchProperties.EXPRENT_POSITION);
+    exprProperties.put("functype", MatchProperties.EXPRENT_FUNCTYPE);
+    exprProperties.put("exittype", MatchProperties.EXPRENT_EXITTYPE);
+    exprProperties.put("consttype", MatchProperties.EXPRENT_CONSTTYPE);
+    exprProperties.put("constvalue", MatchProperties.EXPRENT_CONSTVALUE);
+    exprProperties.put("invclass", MatchProperties.EXPRENT_INVOCATION_CLASS);
+    exprProperties.put("signature", MatchProperties.EXPRENT_INVOCATION_SIGNATURE);
+    exprProperties.put("parameter", MatchProperties.EXPRENT_INVOCATION_PARAMETER);
+    exprProperties.put("index", MatchProperties.EXPRENT_VAR_INDEX);
+    exprProperties.put("name", MatchProperties.EXPRENT_FIELD_NAME);
+    expr_properties = Collections.unmodifiableMap(exprProperties);
+
+    Map<String, StatementType> statType = new HashMap<>();
+    statType.put("if", StatementType.IF);
+    statType.put("do", StatementType.DO);
+    statType.put("switch", StatementType.SWITCH);
+    statType.put("trycatch", StatementType.TRY_CATCH);
+    statType.put("basicblock", StatementType.BASIC_BLOCK);
+    statType.put("sequence", StatementType.SEQUENCE);
+    stat_type = Collections.unmodifiableMap(statType);
+
+    Map<String, Integer> exprType = new HashMap<>();
+    exprType.put("array", Exprent.EXPRENT_ARRAY);
+    exprType.put("assignment", Exprent.EXPRENT_ASSIGNMENT);
+    exprType.put("constant", Exprent.EXPRENT_CONST);
+    exprType.put("exit", Exprent.EXPRENT_EXIT);
+    exprType.put("field", Exprent.EXPRENT_FIELD);
+    exprType.put("function", Exprent.EXPRENT_FUNCTION);
+    exprType.put("if", Exprent.EXPRENT_IF);
+    exprType.put("invocation", Exprent.EXPRENT_INVOCATION);
+    exprType.put("monitor", Exprent.EXPRENT_MONITOR);
+    exprType.put("new", Exprent.EXPRENT_NEW);
+    exprType.put("switch", Exprent.EXPRENT_SWITCH);
+    exprType.put("var", Exprent.EXPRENT_VAR);
+    exprType.put("annotation", Exprent.EXPRENT_ANNOTATION);
+    exprType.put("assert", Exprent.EXPRENT_ASSERT);
+    expr_type = Collections.unmodifiableMap(exprType);
+
+    Map<String, Integer> exprFuncType = new HashMap<>();
+    exprFuncType.put("eq", FunctionExprent.FUNCTION_EQ);
+    expr_func_type = Collections.unmodifiableMap(exprFuncType);
+
+    Map<String, Integer> exprExitType = new HashMap<>();
+    exprExitType.put("return", ExitExprent.EXIT_RETURN);
+    exprExitType.put("throw", ExitExprent.EXIT_THROW);
+    expr_exit_type = Collections.unmodifiableMap(exprExitType);
+
+    Map<String, Integer> statIfType = new HashMap<>();
+    statIfType.put("if", IfStatement.IFTYPE_IF);
+    statIfType.put("ifelse", IfStatement.IFTYPE_IFELSE);
+    stat_if_type = Collections.unmodifiableMap(statIfType);
+
+    Map<String, VarType> exprConstType = new HashMap<>();
+    exprConstType.put("null", VarType.VARTYPE_NULL);
+    exprConstType.put("string", VarType.VARTYPE_STRING);
+    expr_const_type = Collections.unmodifiableMap(exprConstType);
+  }
 
   private final MatchNode rootNode;
   private final Map<String, Object> variables = new HashMap<>();
@@ -121,17 +147,44 @@ public class MatchEngine {
             strValue = values[2];
           }
 
-          value = switch (property) {
-            case STATEMENT_TYPE -> stat_type.get(strValue);
-            case STATEMENT_STATSIZE, STATEMENT_EXPRSIZE -> Integer.valueOf(strValue);
-            case STATEMENT_POSITION, EXPRENT_POSITION, EXPRENT_INVOCATION_CLASS, EXPRENT_INVOCATION_SIGNATURE, EXPRENT_INVOCATION_PARAMETER, EXPRENT_VAR_INDEX, EXPRENT_FIELD_NAME, EXPRENT_CONSTVALUE, STATEMENT_RET, EXPRENT_RET ->
-              strValue;
-            case STATEMENT_IFTYPE -> stat_if_type.get(strValue);
-            case EXPRENT_FUNCTYPE -> expr_func_type.get(strValue);
-            case EXPRENT_EXITTYPE -> expr_exit_type.get(strValue);
-            case EXPRENT_CONSTTYPE -> expr_const_type.get(strValue);
-            case EXPRENT_TYPE -> expr_type.get(strValue);
-          };
+          switch (property) {
+            case STATEMENT_TYPE:
+              value = stat_type.get(strValue);
+              break;
+            case STATEMENT_STATSIZE:
+            case STATEMENT_EXPRSIZE:
+              value = Integer.valueOf(strValue);
+              break;
+            case STATEMENT_POSITION:
+            case EXPRENT_POSITION:
+            case EXPRENT_INVOCATION_CLASS:
+            case EXPRENT_INVOCATION_SIGNATURE:
+            case EXPRENT_INVOCATION_PARAMETER:
+            case EXPRENT_VAR_INDEX:
+            case EXPRENT_FIELD_NAME:
+            case EXPRENT_CONSTVALUE:
+            case STATEMENT_RET:
+            case EXPRENT_RET:
+              value = strValue;
+              break;
+            case STATEMENT_IFTYPE:
+              value = stat_if_type.get(strValue);
+              break;
+            case EXPRENT_FUNCTYPE:
+              value = expr_func_type.get(strValue);
+              break;
+            case EXPRENT_EXITTYPE:
+              value = expr_exit_type.get(strValue);
+              break;
+            case EXPRENT_CONSTTYPE:
+              value = expr_const_type.get(strValue);
+              break;
+            case EXPRENT_TYPE:
+              value = expr_type.get(strValue);
+              break;
+            default:
+              throw new RuntimeException("Unknown matching property");
+          }
 
           matchNode.addRule(property, new RuleValue(parameter, value));
         }

@@ -7,13 +7,12 @@ import org.jetbrains.java.decompiler.struct.StructContext;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.module.ModuleFinder;
-import java.lang.module.ModuleReader;
-import java.lang.module.ModuleReference;
 import java.nio.ByteBuffer;
+import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Stream;
 public final class ClasspathScanner {
 
     public static void addAllClasspath(StructContext ctx) {
@@ -40,39 +39,82 @@ public final class ClasspathScanner {
     }
 
     private static void addAllModulePath(StructContext ctx) {
-      for (ModuleReference module : ModuleFinder.ofSystem().findAll()) {
-        String name = module.descriptor().name();
-        try {
-          ModuleReader reader = module.open();
-          DecompilerContext.getLogger().writeMessage("Reading Module: " + name, Severity.INFO);
-          reader.list().forEach(cls -> {
-            if (!cls.endsWith(".class") || cls.contains("module-info.class"))
-              return;
+      try {
+        Class<?> moduleFinderClass = Class.forName("java.lang.module.ModuleFinder");
+        Class<?> moduleReferenceClass = Class.forName("java.lang.module.ModuleReference");
+        Class<?> moduleReaderClass = Class.forName("java.lang.module.ModuleReader");
 
-            DecompilerContext.getLogger().writeMessage("  " + cls, Severity.INFO);
-            try {
-              Optional<ByteBuffer> bb = reader.read(cls);
-              if (bb.isEmpty()) {
-                DecompilerContext.getLogger().writeMessage("    Error Reading Class: " + cls, Severity.ERROR);
+        Object finder = moduleFinderClass.getMethod("ofSystem").invoke(null);
+        @SuppressWarnings("unchecked")
+        Set<Object> modules = (Set<Object>)moduleFinderClass.getMethod("findAll").invoke(finder);
+
+        Method descriptorMethod = moduleReferenceClass.getMethod("descriptor");
+        Method nameMethod = null;
+        Method openMethod = moduleReferenceClass.getMethod("open");
+        Method listMethod = moduleReaderClass.getMethod("list");
+        Method readMethod = moduleReaderClass.getMethod("read", String.class);
+        Method closeMethod = moduleReaderClass.getMethod("close");
+
+        for (Object module : modules) {
+          Object descriptor = descriptorMethod.invoke(module);
+          if (nameMethod == null) {
+            nameMethod = descriptor.getClass().getMethod("name");
+          }
+          String name = (String)nameMethod.invoke(descriptor);
+
+          Object reader = openMethod.invoke(module);
+          DecompilerContext.getLogger().writeMessage("Reading Module: " + name, Severity.INFO);
+
+          @SuppressWarnings("unchecked")
+          Stream<String> stream = (Stream<String>)listMethod.invoke(reader);
+          try {
+            stream.forEach(cls -> {
+              if (!cls.endsWith(".class") || cls.contains("module-info.class")) {
                 return;
               }
 
-              byte[] data;
-              if (bb.get().hasArray()) {
-                data = bb.get().array();
-              } else {
-                data = new byte[bb.get().remaining()];
-                bb.get().get(data);
+              DecompilerContext.getLogger().writeMessage("  " + cls, Severity.INFO);
+              try {
+                @SuppressWarnings("unchecked")
+                Optional<ByteBuffer> bb = (Optional<ByteBuffer>)readMethod.invoke(reader, cls);
+                if (!bb.isPresent()) {
+                  DecompilerContext.getLogger().writeMessage("    Error Reading Class: " + cls, Severity.ERROR);
+                  return;
+                }
+
+                ByteBuffer buffer = bb.get();
+                byte[] data;
+                if (buffer.hasArray()) {
+                  data = buffer.array();
+                } else {
+                  data = new byte[buffer.remaining()];
+                  buffer.get(data);
+                }
+                ctx.addData(name, cls, data, false);
+              } catch (Exception e) {
+                DecompilerContext.getLogger().writeMessage("    Error Reading Class: " + cls, e);
               }
-              ctx.addData(name, cls, data, false);
-            } catch (IOException e) {
-              DecompilerContext.getLogger().writeMessage("    Error Reading Class: " + cls, e);
+            });
+          }
+          finally {
+            try {
+              stream.close();
+            } catch (Exception ignored) {
+              // ignore
             }
-          });
-          reader.close();
-        } catch (IOException e) {
-          DecompilerContext.getLogger().writeMessage("Error loading module " + name, e);
+            try {
+              closeMethod.invoke(reader);
+            } catch (Exception ignored) {
+              // ignore
+            }
+          }
         }
+      }
+      catch (ClassNotFoundException e) {
+        // Java 8 has no module system
+      }
+      catch (Exception e) {
+        DecompilerContext.getLogger().writeMessage("Error loading modules", e);
       }
     }
 }

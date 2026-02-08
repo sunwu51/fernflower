@@ -62,6 +62,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -422,9 +423,44 @@ public class ClassWriter {
     return false;
   }
 
-  private record AnnotationContainer(Set<AnnotationExprent> memberAnnotation, Set<TypeAnnotationModel> typeAnnotationModel) {
+  private static class AnnotationContainer {
+    private final Set<AnnotationExprent> memberAnnotation;
+    private final Set<TypeAnnotationModel> typeAnnotationModel;
 
-    private record TypeAnnotationModel(AnnotationExprent annotation, List<StructTypePathEntry> paths) {}
+    public AnnotationContainer(Set<AnnotationExprent> memberAnnotation, Set<TypeAnnotationModel> typeAnnotationModel) {
+      this.memberAnnotation = memberAnnotation;
+      this.typeAnnotationModel = typeAnnotationModel;
+    }
+
+    private static class TypeAnnotationModel {
+      private final AnnotationExprent annotation;
+      private final List<StructTypePathEntry> paths;
+
+      public TypeAnnotationModel(AnnotationExprent annotation, List<StructTypePathEntry> paths) {
+        this.annotation = annotation;
+        this.paths = paths;
+      }
+
+      public AnnotationExprent getAnnotation() { return annotation; }
+      public List<StructTypePathEntry> getPaths() { return paths; }
+
+      @Override
+      public boolean equals(Object o) {
+        if (this == o) {
+          return true;
+        }
+        if (!(o instanceof TypeAnnotationModel)) {
+          return false;
+        }
+        TypeAnnotationModel that = (TypeAnnotationModel)o;
+        return Objects.equals(annotation, that.annotation) && Objects.equals(paths, that.paths);
+      }
+
+      @Override
+      public int hashCode() {
+        return Objects.hash(annotation, paths);
+      }
+    }
 
     public boolean containsAll(AnnotationContainer other) {
       return memberAnnotation.containsAll(other.memberAnnotation) &&
@@ -1098,7 +1134,8 @@ public class ClassWriter {
               return 1;
             }
             //not really necessary, but it is safer
-            else if (assignment.getLeft() instanceof VarExprent varExprent) {
+            else if (assignment.getLeft() instanceof VarExprent) {
+              VarExprent varExprent = (VarExprent)assignment.getLeft();
               if (entries.stream().anyMatch(entry -> entry.myName != null && entry.myName.equals(varExprent.getName()))) {
                 return 1;
               }
@@ -1123,7 +1160,23 @@ public class ClassWriter {
     return new RecordConstructorContext(hideMethod, compact);
   }
 
-  record RecordConstructorContext(boolean hideConstructor, boolean compact) { }
+  private static final class RecordConstructorContext {
+    private final boolean hideConstructor;
+    private final boolean compact;
+
+    private RecordConstructorContext(boolean hideConstructor, boolean compact) {
+      this.hideConstructor = hideConstructor;
+      this.compact = compact;
+    }
+
+    private boolean hideConstructor() {
+      return hideConstructor;
+    }
+
+    private boolean compact() {
+      return compact;
+    }
+  }
 
   private static @NotNull List<AnnotationExprent> collectParameterAnnotations(StructMethod mt, Type type, int param) {
     List<AnnotationExprent> result = new ArrayList<>();
@@ -1374,15 +1427,17 @@ public class ClassWriter {
     buffer.append("// $FF: renamed from: ");
 
     switch (type) {
-      case CLASS -> buffer.append(ExprProcessor.buildJavaClassName(oldName));
-      case FIELD -> {
+      case CLASS:
+        buffer.append(ExprProcessor.buildJavaClassName(oldName));
+        break;
+      case FIELD:
         String[] fParts = oldName.split(" ");
         FieldDescriptor fd = FieldDescriptor.parseDescriptor(fParts[2]);
         buffer.append(fParts[1]);
         buffer.append(' ');
         buffer.append(getTypePrintOut(fd.type));
-      }
-      default -> {
+        break;
+      default:
         String[] mParts = oldName.split(" ");
         MethodDescriptor md = MethodDescriptor.parseDescriptor(mParts[2]);
         buffer.append(mParts[1]);
@@ -1397,7 +1452,7 @@ public class ClassWriter {
         }
         buffer.append(") ");
         buffer.append(getTypePrintOut(md.ret));
-      }
+        break;
     }
 
     buffer.appendLineSeparator();
@@ -1505,11 +1560,11 @@ public class ClassWriter {
       List<VarType> parameterBounds = bounds.get(i);
       List<TypeAnnotation> firstTypeAnnotations = TargetInfo.TypeParameterBoundTarget.extract(typeAnnotations, i, 0);
       if (parameterBounds.size() > 1 ||
-          (parameterBounds.size() == 1 && !"java/lang/Object".equals(parameterBounds.getFirst().getValue()) ||
+          (parameterBounds.size() == 1 && !"java/lang/Object".equals(parameterBounds.get(0).getValue()) ||
            !firstTypeAnnotations.isEmpty())) {
         buffer.append(" extends ");
         firstTypeAnnotations.forEach(typeAnnotation -> typeAnnotation.writeTo(buffer));
-        buffer.append(ExprProcessor.getCastTypeName(parameterBounds.getFirst(), Collections.emptyList()));
+        buffer.append(ExprProcessor.getCastTypeName(parameterBounds.get(0), Collections.emptyList()));
         for (int j = 1; j < parameterBounds.size(); j++) {
           buffer.append(" & ");
           TargetInfo.TypeParameterBoundTarget.extract(typeAnnotations, i, j).forEach(typeAnnotation -> typeAnnotation.writeTo(buffer));

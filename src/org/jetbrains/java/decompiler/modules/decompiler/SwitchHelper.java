@@ -77,7 +77,18 @@ public final class SwitchHelper {
     if (cl.hasRecordPatternSupport() && DecompilerContext.getOption(IFernflowerPreferences.CONVERT_PATTERN_SWITCH)) {
       recognizers.add(new SwitchPatternHelper.JavacReferenceRecognizer());
     }
+    boolean trace = DecompilerContext.getLogger().accepts(org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
+    if (trace) {
+      DecompilerContext.getLogger().writeMessage("SwitchHelper: simplifySwitchesOnReferences start, recordPatternSupport=" +
+                                                cl.hasRecordPatternSupport() + " convertPatternSwitch=" +
+                                                DecompilerContext.getOption(IFernflowerPreferences.CONVERT_PATTERN_SWITCH),
+                                                org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
+    }
     collectSwitchesOn(root, recognizers, candidates, new HashSet<>());
+    if (trace) {
+      DecompilerContext.getLogger().writeMessage("SwitchHelper: candidates=" + candidates.size(),
+                                                org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
+    }
     if (candidates.isEmpty()) return;
     List<TempVarAssignmentItem> tempVarAssignments = new ArrayList<>();
     candidates.forEach(candidate -> tempVarAssignments.addAll(candidate.prepareTempAssignments()));
@@ -103,13 +114,15 @@ public final class SwitchHelper {
     List<Exprent> exprents = statement.getExprents();
     if (exprents != null) {
       for (Exprent exprent : exprents) {
-        if (!(exprent instanceof AssignmentExprent assignmentExprent)) {
+        if (!(exprent instanceof AssignmentExprent)) {
           continue;
         }
+        AssignmentExprent assignmentExprent = (AssignmentExprent)exprent;
         Exprent right = assignmentExprent.getRight();
         Exprent left = assignmentExprent.getLeft();
         boolean containsLeft = containVar(collected, left);
-        if (right instanceof VarExprent varExprent) {
+        if (right instanceof VarExprent) {
+          VarExprent varExprent = (VarExprent)right;
           boolean containsRight = containVar(collected, varExprent);
           if (containsLeft || !containsRight) {
             continue;
@@ -117,17 +130,20 @@ public final class SwitchHelper {
           return false;
         }
 
-        if (right instanceof FunctionExprent functionExprent &&
-            functionExprent.getFuncType() == FUNCTION_CAST &&
-            functionExprent.getLstOperands().size() == 2 &&
-            functionExprent.getLstOperands().get(1) instanceof ConstExprent) {
-          Exprent operand = functionExprent.getLstOperands().get(0);
-          if (operand instanceof VarExprent varExprent) {
-            boolean containsRight = containVar(collected, varExprent);
-            if (containsLeft || !containsRight) {
-              continue;
+        if (right instanceof FunctionExprent) {
+          FunctionExprent functionExprent = (FunctionExprent)right;
+          if (functionExprent.getFuncType() == FUNCTION_CAST &&
+              functionExprent.getLstOperands().size() == 2 &&
+              functionExprent.getLstOperands().get(1) instanceof ConstExprent) {
+            Exprent operand = functionExprent.getLstOperands().get(0);
+            if (operand instanceof VarExprent) {
+              VarExprent varExprent = (VarExprent)operand;
+              boolean containsRight = containVar(collected, varExprent);
+              if (containsLeft || !containsRight) {
+                continue;
+              }
+              return false;
             }
-            return false;
           }
         }
       }
@@ -144,7 +160,8 @@ public final class SwitchHelper {
                                         @NotNull List<SwitchRecognizer> recognizers,
                                         @NotNull List<SwitchOnCandidate> candidates,
                                         @NotNull Set<SwitchStatement> usedSwitchStatement) {
-    if (statement instanceof SwitchStatement switchStatement && !usedSwitchStatement.contains(switchStatement)) {
+    if (statement instanceof SwitchStatement && !usedSwitchStatement.contains(statement)) {
+      SwitchStatement switchStatement = (SwitchStatement)statement;
       SwitchExprent switchExprent = (SwitchExprent)switchStatement.getHeadExprent();
       Exprent switchSelector = Objects.requireNonNull(switchExprent).getValue();
       if (switchSelector instanceof InvocationExprent) {
@@ -172,7 +189,8 @@ public final class SwitchHelper {
       MethodWrapper wrapper = classNode.getWrapper().getMethodWrapper(CLINIT_NAME, "()V");
       if (wrapper != null && wrapper.root != null) {
         wrapper.getOrBuildGraph().iterateExprents(exprent -> {
-          if (exprent instanceof AssignmentExprent assignment) {
+          if (exprent instanceof AssignmentExprent) {
+            AssignmentExprent assignment = (AssignmentExprent)exprent;
             Exprent left = assignment.getLeft();
             if (left.type == Exprent.EXPRENT_ARRAY && ((ArrayExprent)left).getArray().equals(arrayField)) {
               mapping.put(assignment.getRight(), ((InvocationExprent)((ArrayExprent)left).getIndex()).getInstance());
@@ -190,7 +208,8 @@ public final class SwitchHelper {
       MethodWrapper wrapper = classNode.getWrapper().getMethodWrapper(invocationExprent.getName(), "()[I");
       if (wrapper != null && wrapper.root != null) {
         wrapper.getOrBuildGraph().iterateExprents(exprent -> {
-          if (exprent instanceof AssignmentExprent assignment) {
+          if (exprent instanceof AssignmentExprent) {
+            AssignmentExprent assignment = (AssignmentExprent)exprent;
             Exprent left = assignment.getLeft();
             if (left.type == Exprent.EXPRENT_ARRAY) {
               Exprent indexExprent = ((ArrayExprent)left).getIndex();
@@ -242,21 +261,41 @@ public final class SwitchHelper {
     return isJavacEnumArray || isEclipseEnumArray;
   }
 
-  record TempVarAssignmentItem(@NotNull VarExprent varExprent,
-                               @NotNull Statement statement,
-                               boolean delete) {
+  static final class TempVarAssignmentItem {
+    private final @NotNull VarExprent varExprent;
+    private final @NotNull Statement statement;
+    private final boolean delete;
+
+    TempVarAssignmentItem(@NotNull VarExprent varExprent, @NotNull Statement statement, boolean delete) {
+      this.varExprent = varExprent;
+      this.statement = statement;
+      this.delete = delete;
+    }
+
     TempVarAssignmentItem(@NotNull VarExprent varExprent, @NotNull Statement statement) {
       this(varExprent, statement, true);
+    }
+
+    VarExprent varExprent() {
+      return varExprent;
+    }
+
+    Statement statement() {
+      return statement;
+    }
+
+    boolean delete() {
+      return delete;
     }
   }
 
   static void removeTempVariableDeclarations(@NotNull List<TempVarAssignmentItem> tempVarAssignments) {
     if (tempVarAssignments.isEmpty()) return;
     Set<Statement> visited = new HashSet<>();
-    Set<Statement> statements = tempVarAssignments.stream().filter(a -> a.delete).map(a -> a.statement()).collect(Collectors.toSet());
+    Set<Statement> statements = tempVarAssignments.stream().filter(a -> a.delete()).map(a -> a.statement()).collect(Collectors.toSet());
     Map<VarExprent, List<VarExprent>> vars =
-      tempVarAssignments.stream().filter(a -> a.delete).map(a -> a.varExprent()).collect(Collectors.groupingBy(t -> t));
-    Set<VarExprent> preserve = tempVarAssignments.stream().filter(a->!a.delete).map(t->t.varExprent).collect(Collectors.toSet());
+      tempVarAssignments.stream().filter(a -> a.delete()).map(a -> a.varExprent()).collect(Collectors.groupingBy(t -> t));
+    Set<VarExprent> preserve = tempVarAssignments.stream().filter(a -> !a.delete()).map(t -> t.varExprent()).collect(Collectors.toSet());
     for (Statement statement : statements) {
       Statement parent = statement;
       while (parent != null) {
@@ -328,7 +367,8 @@ public final class SwitchHelper {
     if (!cl.hasEnhancedSwitchSupport()) {
       return;
     }
-    if (statement instanceof SwitchStatement switchStatement) {
+    if (statement instanceof SwitchStatement) {
+      SwitchStatement switchStatement = (SwitchStatement)statement;
       if (canBeRules(switchStatement)) {
         switchStatement.setCanBeRule(true);
         prepareForRules(switchStatement);
@@ -638,7 +678,7 @@ public final class SwitchHelper {
 
         List<Exprent> newExprents;
         if (newSelector.lastExprentIndex() > 0) {
-          newExprents = List.copyOf(firstSwitchExprents.subList(0, newSelector.lastExprentIndex()));
+          newExprents = new ArrayList<>(firstSwitchExprents.subList(0, newSelector.lastExprentIndex()));
         }
         else {
           newExprents = Collections.emptyList();
@@ -664,7 +704,7 @@ public final class SwitchHelper {
 
       @Override
       public Set<SwitchStatement> usedSwitch() {
-        return Set.of(firstSwitch, secondSwitch);
+        return new HashSet<>(Arrays.asList(firstSwitch, secondSwitch));
       }
 
       private @NotNull NewSelector getSelector(@NotNull List<TempVarAssignmentItem> tempVarAssignments, List<Exprent> firstSwitchExprents) {
@@ -693,7 +733,22 @@ public final class SwitchHelper {
         return tempVarAssignments;
       }
 
-      private record NewSelector(int lastExprentIndex, Exprent newSelector) {
+      private static final class NewSelector {
+        private final int lastExprentIndex;
+        private final Exprent newSelector;
+
+        private NewSelector(int lastExprentIndex, Exprent newSelector) {
+          this.lastExprentIndex = lastExprentIndex;
+          this.newSelector = newSelector;
+        }
+
+        private int lastExprentIndex() {
+          return lastExprentIndex;
+        }
+
+        private Exprent newSelector() {
+          return newSelector;
+        }
       }
     }
 
@@ -742,7 +797,7 @@ public final class SwitchHelper {
 
       @Override
       public Set<SwitchStatement> usedSwitch() {
-        return Set.of(switchStatement);
+        return Collections.singleton(switchStatement);
       }
 
       @Override

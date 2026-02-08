@@ -71,7 +71,7 @@ public final class LowBreakHelper {
 
       switch (closure.type) {
         case SEQUENCE:
-          Statement last = closure.getStats().getLast();
+          Statement last = closure.getStats().get(closure.getStats().size() - 1);
 
           if (isOkClosure(closure, source, last)) {
             newclosure = last;

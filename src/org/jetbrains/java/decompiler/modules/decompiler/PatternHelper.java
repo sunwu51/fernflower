@@ -27,6 +27,7 @@ import org.jetbrains.java.decompiler.struct.gen.VarType;
 import org.jetbrains.java.decompiler.util.VBStyleCollection;
 
 import java.util.ArrayDeque;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -54,10 +55,24 @@ public final class PatternHelper {
   public static void replaceAssignmentsWithPatternVariables(@NotNull RootStatement statement, @NotNull StructClass structClass) {
     if (!structClass.hasPatternsInInstanceofSupport()) return;
     boolean recordPatternSupport = structClass.hasRecordPatternSupport();
+    boolean trace = DecompilerContext.getLogger().accepts(org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
+    if (trace) {
+      DecompilerContext.getLogger().writeMessage("PatternHelper: start, recordPatternSupport=" + recordPatternSupport, org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
+    }
     List<TempVarAssignmentItem> tempVarAssignments = new ArrayList<>();
 
-    List<Runnable> runnables = replaceAssignmentsWithPatternVariables(statement, new HashSet<>(), tempVarAssignments, recordPatternSupport);
-    if (runnables.isEmpty() || !SwitchHelper.checkAssignmentsToDelete(statement, tempVarAssignments)) {
+    boolean[] recordPatternFound = new boolean[]{false};
+    List<Runnable> runnables = replaceAssignmentsWithPatternVariables(statement, new HashSet<>(), tempVarAssignments, recordPatternSupport, recordPatternFound);
+    if (trace) {
+      DecompilerContext.getLogger().writeMessage("PatternHelper: actions=" + runnables.size() + " recordPatternFound=" + recordPatternFound[0] +
+                                                " tempAssignments=" + tempVarAssignments.size(),
+                                                org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
+    }
+    if (runnables.isEmpty() || (!recordPatternFound[0] && !SwitchHelper.checkAssignmentsToDelete(statement, tempVarAssignments))) {
+      if (trace) {
+        DecompilerContext.getLogger().writeMessage("PatternHelper: bail out (no actions or assignments check failed)",
+                                                  org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
+      }
       return;
     }
     for (Runnable runnable : runnables) {
@@ -74,14 +89,36 @@ public final class PatternHelper {
   private static List<Runnable> replaceAssignmentsWithPatternVariables(@NotNull Statement statement,
                                                                        @NotNull Set<IfStatement> usedIfStatements,
                                                                        @NotNull List<TempVarAssignmentItem> tempVarAssignments,
-                                                                       boolean recordPatternSupport) {
+                                                                       boolean recordPatternSupport,
+                                                                       boolean[] recordPatternFound) {
     ArrayList<Runnable> actions = new ArrayList<>();
-    if (statement instanceof IfStatement ifStatement && !usedIfStatements.contains(ifStatement)) {
+    boolean trace = DecompilerContext.getLogger().accepts(org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
+    if (statement instanceof IfStatement) {
+      IfStatement ifStatement = (IfStatement)statement;
+      if (usedIfStatements.contains(ifStatement)) {
+        if (trace) {
+          DecompilerContext.getLogger().writeMessage("PatternHelper: skip ifStatement already used id=" + ifStatement.id,
+                                                    org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
+        }
+        return new ArrayList<>();
+      }
       FunctionExprent instanceOfExprent = findInstanceofExprent(ifStatement);
-      if (instanceOfExprent == null) return new ArrayList<>();
+      if (instanceOfExprent == null) {
+        if (trace) {
+          DecompilerContext.getLogger().writeMessage("PatternHelper: no instanceof in ifStatement id=" + ifStatement.id,
+                                                    org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
+        }
+        return new ArrayList<>();
+      }
 
       List<Exprent> operands = instanceOfExprent.getLstOperands();
-      if (operands.size() != 2 || operands.get(0).type != Exprent.EXPRENT_VAR || operands.get(1).type != Exprent.EXPRENT_CONST) return new ArrayList<>();
+      if (operands.size() != 2 || operands.get(0).type != Exprent.EXPRENT_VAR || operands.get(1).type != Exprent.EXPRENT_CONST) {
+        if (trace) {
+          DecompilerContext.getLogger().writeMessage("PatternHelper: instanceof operands mismatch id=" + ifStatement.id,
+                                                    org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
+        }
+        return new ArrayList<>();
+      }
       VarExprent operand = (VarExprent)operands.get(0);
       ConstExprent checkType = (ConstExprent)operands.get(1);
 
@@ -94,10 +131,28 @@ public final class PatternHelper {
         statementToChange = ifStatement.getElsestat();
         patternVarCandidate = findInitPatternVarCandidate(statementToChange, operand, checkType, recordPatternSupport, statementToChange);
       }
-      if (patternVarCandidate == null) return new ArrayList<>();
+      if (patternVarCandidate == null) {
+        if (trace) {
+          DecompilerContext.getLogger().writeMessage("PatternHelper: no candidate for ifStatement id=" + ifStatement.id,
+                                                    org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
+        }
+        return new ArrayList<>();
+      }
       tempVarAssignments.addAll(patternVarCandidate.getTempAssignments());
       usedIfStatements.add(ifStatement);
       usedIfStatements.addAll(patternVarCandidate.getUsedIfStatement());
+      if (trace && !patternVarCandidate.getUsedIfStatement().isEmpty()) {
+        StringBuilder ids = new StringBuilder();
+        for (IfStatement used : patternVarCandidate.getUsedIfStatement()) {
+          if (ids.length() > 0) ids.append(',');
+          ids.append(used.id);
+        }
+        DecompilerContext.getLogger().writeMessage("PatternHelper: mark used if ids=" + ids,
+                                                  org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
+      }
+      if (patternVarCandidate.getVarExprent() instanceof RecordVarExprent) {
+        recordPatternFound[0] = true;
+      }
       PatternVariableCandidate finalPatternVarCandidate = patternVarCandidate;
       Runnable action = ()-> {
         operands.remove(1);
@@ -107,7 +162,7 @@ public final class PatternHelper {
       actions.add(action);
     }
     for (Statement child : statement.getStats()) {
-      actions.addAll(0, replaceAssignmentsWithPatternVariables(child, usedIfStatements, tempVarAssignments, recordPatternSupport));
+      actions.addAll(0, replaceAssignmentsWithPatternVariables(child, usedIfStatements, tempVarAssignments, recordPatternSupport, recordPatternFound));
     }
     return actions;
   }
@@ -124,17 +179,33 @@ public final class PatternHelper {
                                                               @NotNull ConstExprent checkType,
                                                               boolean recordPatternSupport,
                                                               @NotNull Statement topLevelStatement) {
-    if (ifElseStat instanceof BasicBlockStatement basicBlockStatement) {
+    boolean trace = DecompilerContext.getLogger().accepts(org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
+    if (ifElseStat instanceof BasicBlockStatement) {
+      BasicBlockStatement basicBlockStatement = (BasicBlockStatement)ifElseStat;
       //check that cast correct and get the last assignment
       PatternVariableCandidate candidate = findSimpleCandidateFromIfStat(ifElseStat, operand, checkType, topLevelStatement);
-      if (candidate == null) return null;
+      if (candidate == null) {
+        if (trace) {
+          DecompilerContext.getLogger().writeMessage("PatternHelper: no simple candidate for operand=" + operand +
+                                                    " checkType=" + checkType, org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
+        }
+        return null;
+      }
       //check what if it is record patterns
       if (recordPatternSupport && DecompilerContext.getOption(IFernflowerPreferences.CONVERT_RECORD_PATTERN)) {
         //collect everything from zero to check
         PatternVariableCandidate recordCandidate = findInitRecordPatternCandidate(basicBlockStatement, operand, candidate.getVarExprent());
         if (recordCandidate != null) {
+          if (trace) {
+            DecompilerContext.getLogger().writeMessage("PatternHelper: record pattern candidate found for operand=" + operand,
+                                                      org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
+          }
           recordCandidate.getTempVarAssignments().addAll(candidate.getTempVarAssignments());
           return recordCandidate;
+        }
+        if (trace) {
+          DecompilerContext.getLogger().writeMessage("PatternHelper: record pattern candidate NOT found for operand=" + operand,
+                                                    org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
         }
       }
       return candidate;
@@ -212,7 +283,8 @@ public final class PatternHelper {
 
     List<Exprent> castExprents = castExprent.getAllExprents();
     if (castExprents.size() != 2 ||
-        !operand.equals(castExprents.get(0)) ||
+        !(castExprents.get(0) instanceof VarExprent) ||
+        !sameVar(operand, (VarExprent)castExprents.get(0)) ||
         !checkType.equals(castExprents.get(1))) {
       return null;
     }
@@ -220,7 +292,8 @@ public final class PatternHelper {
     if (!varExprent.isDefinition()) {
       tempVarAssignments.add(new TempVarAssignmentItem(varExprent, ifElseStat));
     }
-    if (assignmentExprent.getLeft() instanceof VarExprent toDelete) {
+    if (assignmentExprent.getLeft() instanceof VarExprent) {
+      VarExprent toDelete = (VarExprent)assignmentExprent.getLeft();
       tempVarAssignments.add(new TempVarAssignmentItem(toDelete, ifElseStat));
     }
     return new PatternVariableCandidate(varExprent, topLevelStatement, new HashSet<>(), tempVarAssignments, () -> {
@@ -231,9 +304,10 @@ public final class PatternHelper {
                                                                          @NotNull VarExprent varExprent,
                                                                          @NotNull VarExprent candidate) {
     Statement parent = blockStatement.getParent();
-    if (!(parent instanceof SequenceStatement parentSequenceStatement)) {
+    if (!(parent instanceof SequenceStatement)) {
       return null;
     }
+    SequenceStatement parentSequenceStatement = (SequenceStatement)parent;
     int indexOfBlock = parentSequenceStatement.getStats().indexOf(blockStatement);
     if (indexOfBlock != 0) {
       return null;
@@ -246,14 +320,20 @@ public final class PatternHelper {
 
   private static @Nullable PatternVariableCandidate findRecordPatternCandidate(@NotNull Statement parent,
                                                                                @NotNull VarTracker varTracker) {
+    boolean trace = DecompilerContext.getLogger().accepts(org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
     if (!(parent instanceof SequenceStatement)) {
+      if (trace) {
+        DecompilerContext.getLogger().writeMessage("PatternHelper: record pattern parent not sequence", org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
+      }
       return null;
     }
-    if (checkRegularEdgesForRecordPattern(parent)) return null;
     Set<IfStatement> ifStatements = new HashSet<>();
 
     VBStyleCollection<Statement, Integer> stats = parent.getStats();
     if (stats.size() < 3) {
+      if (trace) {
+        DecompilerContext.getLogger().writeMessage("PatternHelper: record pattern stats too small=" + stats.size(), org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
+      }
       return null;
     }
     int i = 0;
@@ -261,19 +341,37 @@ public final class PatternHelper {
     //It is possible to have false positive or false negative results here, and it is hard to exclude that.
     //Let's keep it simple at least
     while (true) {
-      if (!(stats.size() > i + 1 && stats.get(i) instanceof BasicBlockStatement basicBlockStatement &&
-            stats.get(i + 1) instanceof CatchStatement catchStatement)) {
+      if (!(stats.size() > i + 1)) {
         if (i != 0) {
           break;
         }
         return null;
       }
+      Statement first = stats.get(i);
+      Statement second = stats.get(i + 1);
+      if (!(first instanceof BasicBlockStatement) || !(second instanceof CatchStatement)) {
+        if (i != 0) {
+          break;
+        }
+        if (trace) {
+          DecompilerContext.getLogger().writeMessage("PatternHelper: record pattern initial pair mismatch", org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
+        }
+        return null;
+      }
+      BasicBlockStatement basicBlockStatement = (BasicBlockStatement)first;
+      CatchStatement catchStatement = (CatchStatement)second;
       //the first block must contain only assignments which can be gathered
       if (!processFullBlock(varTracker, basicBlockStatement)) {
+        if (trace) {
+          DecompilerContext.getLogger().writeMessage("PatternHelper: record pattern full block failed", org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
+        }
         return null;
       }
       //a catch section with call for a record component
       if (!processCatchStatement(varTracker, catchStatement)) {
+        if (trace) {
+          DecompilerContext.getLogger().writeMessage("PatternHelper: record pattern catch failed", org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
+        }
         return null;
       }
       i += 2;
@@ -291,9 +389,14 @@ public final class PatternHelper {
       });
     }
     //R(String s), there is the next if-statement, which defines the next class
-    if (stats.get(nextIndex) instanceof IfStatement ifStatement && stats.size() - 1 == nextIndex) {
+    if (stats.size() - 1 == nextIndex && stats.get(nextIndex) instanceof IfStatement) {
+      IfStatement ifStatement = (IfStatement)stats.get(nextIndex);
       PatternVariableCandidate nestedCandidate = findRecursivelyInstanceOfIfStatement(stats.get(nextIndex), varTracker, tempVarAssignmentItems);
       if (nestedCandidate != null) {
+        if (trace) {
+          DecompilerContext.getLogger().writeMessage("PatternHelper: record pattern uses nested if id=" + ifStatement.id,
+                                                    org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
+        }
         ifStatements.add(ifStatement);
         ifStatements.addAll(nestedCandidate.getUsedIfStatement());
         tempVarAssignmentItems.addAll(varTracker.getTempItems());
@@ -317,9 +420,10 @@ public final class PatternHelper {
   private static PatternVariableCandidate findRecursivelyInstanceOfIfStatement(@NotNull Statement statement,
                                                                                @NotNull VarTracker tracker,
                                                                                @NotNull List<TempVarAssignmentItem> tempVarAssignmentItems) {
-    if (!(statement instanceof IfStatement ifStatement)) {
+    if (!(statement instanceof IfStatement)) {
       return null;
     }
+    IfStatement ifStatement = (IfStatement)statement;
     if (ifStatement.isNegated() || ifStatement.getHeadexprent().getAllExprents().size() != 1) {
       return null;
     }
@@ -368,39 +472,61 @@ public final class PatternHelper {
    */
   private static boolean processCatchStatement(@NotNull VarTracker tracker,
                                                @NotNull CatchStatement statement) {
+    boolean trace = DecompilerContext.getLogger().accepts(org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
     Statement tryBody = statement.getFirst();
     if (tryBody == null || tryBody.getStats() == null || !tryBody.getStats().isEmpty() ||
         tryBody.getExprents() == null || tryBody.getExprents().size() != 1) {
+      if (trace) {
+        DecompilerContext.getLogger().writeMessage("PatternHelper: catch body shape mismatch", org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
+      }
       return false;
     }
     Exprent body = tryBody.getExprents().get(0);
     InvocationExprent invocationExprent = null;
     boolean hasAssignment = false;
-    if (body instanceof AssignmentExprent assignmentExprent && assignmentExprent.getRight() instanceof InvocationExprent newInvocation) {
-      invocationExprent = newInvocation;
-      hasAssignment = true;
+    if (body instanceof AssignmentExprent) {
+      AssignmentExprent assignmentExprent = (AssignmentExprent)body;
+      if (assignmentExprent.getRight() instanceof InvocationExprent) {
+        invocationExprent = (InvocationExprent)assignmentExprent.getRight();
+        hasAssignment = true;
+      }
     }
-    else if (body instanceof InvocationExprent newInvocation) {
-      invocationExprent = newInvocation;
+    else if (body instanceof InvocationExprent) {
+      invocationExprent = (InvocationExprent)body;
     }
     if (invocationExprent == null) {
+      if (trace) {
+        DecompilerContext.getLogger().writeMessage("PatternHelper: catch no invocation", org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
+      }
       return false;
     }
     Exprent qualifier = invocationExprent.getInstance();
     if (qualifier == null ||
         invocationExprent.isStatic() ||
         !(invocationExprent.getParameters() != null && invocationExprent.getParameters().isEmpty())) {
+      if (trace) {
+        DecompilerContext.getLogger().writeMessage("PatternHelper: catch invocation qualifier/params mismatch", org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
+      }
       return false;
     }
     RecordVarExprent recordVarExprent = tracker.getRecord(qualifier);
     if (recordVarExprent == null) {
+      if (trace) {
+        DecompilerContext.getLogger().writeMessage("PatternHelper: catch qualifier not tracked", org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
+      }
       return false;
     }
     if (statement.getStats().size() != 2) {
+      if (trace) {
+        DecompilerContext.getLogger().writeMessage("PatternHelper: catch stats size != 2", org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
+      }
       return false;
     }
     Statement catchSection = statement.getStats().get(1);
     if (!(catchSection.getStats().isEmpty() && catchSection.getExprents() != null)) {
+      if (trace) {
+        DecompilerContext.getLogger().writeMessage("PatternHelper: catch section shape mismatch", org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
+      }
       return false;
     }
     if (!((catchSection.getExprents().size() == 1) ||
@@ -408,10 +534,25 @@ public final class PatternHelper {
       return false;
     }
     Exprent throwExpected = catchSection.getExprents().get(0);
-    if (!((throwExpected instanceof ExitExprent exitExprent && exitExprent.getExitType() == EXIT_THROW &&
-          exitExprent.getValue() instanceof NewExprent newExprent && newExprent.getNewType() != null &&
-          MATCH_EXCEPTION.equals(newExprent.getNewType().getValue())) ||
-        (catchSection.getExprents().get(1) instanceof ExitExprent))) {
+    boolean validThrow = false;
+    if (throwExpected instanceof ExitExprent) {
+      ExitExprent exitExprent = (ExitExprent)throwExpected;
+      if (exitExprent.getExitType() == EXIT_THROW && exitExprent.getValue() instanceof NewExprent) {
+        NewExprent newExprent = (NewExprent)exitExprent.getValue();
+        if (newExprent.getNewType() != null &&
+            MATCH_EXCEPTION.equals(newExprent.getNewType().getValue())) {
+          validThrow = true;
+        }
+      }
+    }
+    if (!validThrow && catchSection.getExprents().size() > 1 &&
+        catchSection.getExprents().get(1) instanceof ExitExprent) {
+      validThrow = true;
+    }
+    if (!validThrow) {
+      if (trace) {
+        DecompilerContext.getLogger().writeMessage("PatternHelper: catch missing MatchException throw", org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
+      }
       return false;
     }
 
@@ -422,9 +563,10 @@ public final class PatternHelper {
       recordVarExprent.addComponent(nextComponent);
       return true;
     }
-    if (!(((AssignmentExprent)body).getLeft() instanceof VarExprent assignTo)) {
+    if (!(((AssignmentExprent)body).getLeft() instanceof VarExprent)) {
       return false;
     }
+    VarExprent assignTo = (VarExprent)((AssignmentExprent)body).getLeft();
     VarExprent assignToDefinition = (VarExprent)assignTo.copy();
     assignToDefinition.setDefinition(true);
     RecordVarExprent nextComponent = new RecordVarExprent(assignToDefinition);
@@ -467,11 +609,14 @@ public final class PatternHelper {
       //should keep this variable, because it is used outside
       if (edges.size() == 1 && edges.get(0).getType() == StatEdge.EdgeType.BREAK && exprents.size() > 1) {
         Exprent exprent = exprents.get(exprents.size() - 1);
-        if (exprent instanceof AssignmentExprent assignmentExprent &&
-            assignmentExprent.getLeft() instanceof VarExprent preserveVarExprent &&
-            usedOutside(edges.get(0), assignmentExprent)) {
+        if (exprent instanceof AssignmentExprent) {
+          AssignmentExprent assignmentExprent = (AssignmentExprent)exprent;
+          if (assignmentExprent.getLeft() instanceof VarExprent &&
+              usedOutside(edges.get(0), assignmentExprent)) {
+            VarExprent preserveVarExprent = (VarExprent)assignmentExprent.getLeft();
             exprents = exprents.subList(0, exprents.size() - 1);
             tracker.addPreserve(preserveVarExprent, statement);
+          }
         }
       }
       for (Exprent statementExprent : exprents) {
@@ -491,7 +636,8 @@ public final class PatternHelper {
   private static boolean usedOutside(@NotNull StatEdge edge,
                                      @NotNull AssignmentExprent assignmentExprent) {
     Exprent left = assignmentExprent.getLeft();
-    if (!(left instanceof VarExprent varExprent)) return false;
+    if (!(left instanceof VarExprent)) return false;
+    VarExprent varExprent = (VarExprent)left;
     Statement destination = edge.getDestination();
     if (destination == null) return false;
     List<Exprent> exprents = destination.getExprents();
@@ -508,15 +654,18 @@ public final class PatternHelper {
   private static boolean collectRecordAssignment(@NotNull VarTracker tracker,
                                                  @Nullable Exprent exprent,
                                                  @NotNull Statement statement) {
-    if (!(exprent instanceof AssignmentExprent assignmentExprent)) {
+    if (!(exprent instanceof AssignmentExprent)) {
       return false;
     }
+    AssignmentExprent assignmentExprent = (AssignmentExprent)exprent;
     Exprent exprentLeft = assignmentExprent.getLeft();
-    if (!(exprentLeft instanceof VarExprent leftVarExprent)) {
+    if (!(exprentLeft instanceof VarExprent)) {
       return false;
     }
+    VarExprent leftVarExprent = (VarExprent)exprentLeft;
     Exprent right = assignmentExprent.getRight();
-    if (right instanceof VarExprent varExprent) {
+    if (right instanceof VarExprent) {
+      VarExprent varExprent = (VarExprent)right;
       RecordVarExprent reassignedRecord = tracker.getRecord(varExprent);
       if (reassignedRecord == null) {
         return false;
@@ -524,20 +673,26 @@ public final class PatternHelper {
       reassignedRecord.copyFrom(leftVarExprent);
       tracker.put(leftVarExprent, reassignedRecord, statement);
     }
-    else if (right instanceof FunctionExprent functionExprent &&
-             functionExprent.getFuncType() == FunctionExprent.FUNCTION_CAST &&
-             functionExprent.getLstOperands().size() == 2 &&
-             functionExprent.getLstOperands().get(1) instanceof ConstExprent constExprent) {
-      Exprent varForCast = functionExprent.getLstOperands().get(0);
-      RecordVarExprent recordToCast = tracker.getRecord(varForCast);
-      if (recordToCast == null) {
+    else if (right instanceof FunctionExprent) {
+      FunctionExprent functionExprent = (FunctionExprent)right;
+      if (functionExprent.getFuncType() == FunctionExprent.FUNCTION_CAST &&
+          functionExprent.getLstOperands().size() == 2 &&
+          functionExprent.getLstOperands().get(1) instanceof ConstExprent) {
+        ConstExprent constExprent = (ConstExprent)functionExprent.getLstOperands().get(1);
+        Exprent varForCast = functionExprent.getLstOperands().get(0);
+        RecordVarExprent recordToCast = tracker.getRecord(varForCast);
+        if (recordToCast == null) {
+          return false;
+        }
+        if (!recordToCast.getVarType().equals(constExprent.getExprType())) {
+          return false;
+        }
+        recordToCast.copyFrom(leftVarExprent);
+        tracker.put(leftVarExprent, recordToCast, statement);
+      }
+      else {
         return false;
       }
-      if (!recordToCast.getVarType().equals(constExprent.getExprType())) {
-        return false;
-      }
-      recordToCast.copyFrom(leftVarExprent);
-      tracker.put(leftVarExprent, recordToCast, statement);
     }
     else {
       return false;
@@ -560,6 +715,10 @@ public final class PatternHelper {
       }
     }
     return false;
+  }
+
+  private static boolean sameVar(@NotNull VarExprent left, @NotNull VarExprent right) {
+    return left.getIndex() == right.getIndex() && left.getVersion() == right.getVersion();
   }
 
   static class PatternVariableCandidate {
@@ -650,7 +809,7 @@ public final class PatternHelper {
       RecordVarExprent copy = root.copy();
       Map<RecordVarExprent, RecordVarExprent> mapToNew = new HashMap<>();
       Queue<Map.Entry<RecordVarExprent, RecordVarExprent>> queue = new ArrayDeque<>();
-      queue.add(Map.entry(root, copy));
+      queue.add(new AbstractMap.SimpleEntry<>(root, copy));
       while (!queue.isEmpty()) {
         Map.Entry<RecordVarExprent, RecordVarExprent> nextPair = queue.poll();
         mapToNew.put(nextPair.getKey(), nextPair.getValue());
@@ -660,7 +819,7 @@ public final class PatternHelper {
           return null;
         }
         for (int i = 0; i < oldComponents.size(); i++) {
-          queue.add(Map.entry(oldComponents.get(i), newComponents.get(i)));
+          queue.add(new AbstractMap.SimpleEntry<>(oldComponents.get(i), newComponents.get(i)));
         }
       }
       Map<VarExprent, RecordVarExprent> newVarRecordTracker = new HashMap<>();

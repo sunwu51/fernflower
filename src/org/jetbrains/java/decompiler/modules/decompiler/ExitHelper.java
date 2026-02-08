@@ -47,7 +47,7 @@ public final class ExitHelper {
 
         if (st.type == StatementType.SEQUENCE && st.getStats().size() > 1) {
 
-          Statement last = st.getStats().getLast();
+          Statement last = st.getStats().get(st.getStats().size() - 1);
           Statement secondlast = st.getStats().get(st.getStats().size() - 2);
 
           if (last.getExprents() == null || !last.getExprents().isEmpty()) {

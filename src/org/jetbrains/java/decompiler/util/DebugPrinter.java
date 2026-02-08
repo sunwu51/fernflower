@@ -80,14 +80,16 @@ public final class DebugPrinter {
       sb.append("(").append(values.nextSetBit(0)).append(", ").append(values.length()-1).append(") ");
       sb.append(exp.getClass().getSimpleName());
       sb.append(" ").append(exp.id).append(" ");
-      if (exp instanceof VarExprent varExprent) {
+      if (exp instanceof VarExprent) {
+        VarExprent varExprent = (VarExprent)exp;
         int currindex = varExprent.getIndex();
         int origindex = varProc == null ? -2 : varProc.getVarOriginalIndex(currindex);
         sb.append("[").append(currindex).append(":").append(origindex).append(", ").append(varExprent.isStack()).append("]");
         if (varProc != null) {
           sb.append(varProc.getCandidates(origindex));
         }
-      } else if (exp instanceof AssignmentExprent assignmentExprent) {
+      } else if (exp instanceof AssignmentExprent) {
+        AssignmentExprent assignmentExprent = (AssignmentExprent)exp;
         sb.append("{").append(printExprent(" ",assignmentExprent.getLeft(),varProc)).append(" =").append(printExprent(" ",assignmentExprent.getRight(),varProc)).append("}");
       } else if (exp instanceof IfExprent) {
         sb.append(' ').append(exp.toJava(0, new BytecodeMappingTracer()));

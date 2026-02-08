@@ -169,8 +169,10 @@ public class PPandMMHelper {
   }
 
   private boolean varsEqual(Exprent e1, Exprent e2) {
-    if (!(e1 instanceof VarExprent v1)) return false;
-    if (!(e2 instanceof VarExprent v2)) return false;
+    if (!(e1 instanceof VarExprent)) return false;
+    if (!(e2 instanceof VarExprent)) return false;
+    VarExprent v1 = (VarExprent)e1;
+    VarExprent v2 = (VarExprent)e2;
 
     Integer index1 = varProc.getVarOriginalIndex(v1.getIndex());
     Integer index2 = varProc.getVarOriginalIndex(v2.getIndex());

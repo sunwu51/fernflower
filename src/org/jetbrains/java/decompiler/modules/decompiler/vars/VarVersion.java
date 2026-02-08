@@ -29,7 +29,8 @@ public class VarVersion implements Comparable<VarVersion>{
   @Override
   public boolean equals(Object o) {
     if (o == this) return true;
-    if (!(o instanceof VarVersion paar)) return false;
+    if (!(o instanceof VarVersion)) return false;
+    VarVersion paar = (VarVersion)o;
 
     return var == paar.var && version == paar.version;
   }

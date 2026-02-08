@@ -71,7 +71,8 @@ public class RecordVarExprent extends VarExprent {
    * @return true if the copying is successful (the current set of components is empty), false otherwise
    */
   public boolean copyFrom(@NotNull VarExprent varExprent) {
-    if (varExprent instanceof RecordVarExprent recordVarExprent) {
+    if (varExprent instanceof RecordVarExprent) {
+      RecordVarExprent recordVarExprent = (RecordVarExprent)varExprent;
       if (!this.components.isEmpty()) {
         return false;
       }

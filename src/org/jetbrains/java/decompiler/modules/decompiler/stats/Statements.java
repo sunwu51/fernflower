@@ -17,10 +17,16 @@ public final class Statements {
       return null;
     }
 
-    return switch (stat.type) {
-      case SEQUENCE, IF, ROOT, SWITCH, SYNCHRONIZED -> findFirstData(stat.getFirst());
-      default -> null;
-    };
+    switch (stat.type) {
+      case SEQUENCE:
+      case IF:
+      case ROOT:
+      case SWITCH:
+      case SYNCHRONIZED:
+        return findFirstData(stat.getFirst());
+      default:
+        return null;
+    }
   }
 
   public static boolean isInvocationInitConstructor(InvocationExprent inv, MethodWrapper method, ClassWrapper wrapper, boolean withThis) {

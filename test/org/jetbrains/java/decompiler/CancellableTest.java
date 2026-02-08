@@ -3,6 +3,7 @@ package org.jetbrains.java.decompiler;
 
 import org.assertj.core.api.Assertions;
 import org.jetbrains.java.decompiler.main.CancellationManager;
+import org.jetbrains.java.decompiler.main.decompiler.ConsoleDecompiler;
 import org.jetbrains.java.decompiler.main.extern.IFernflowerPreferences;
 import org.junit.After;
 import org.junit.Before;
@@ -11,6 +12,8 @@ import org.junit.Test;
 import org.junit.rules.Timeout;
 
 import java.io.IOException;
+import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -56,11 +59,12 @@ public class CancellableTest {
       }
     };
 
-    fixture.setUp(Map.of(IFernflowerPreferences.BYTECODE_SOURCE_MAPPING, "1",
-                         IFernflowerPreferences.DUMP_ORIGINAL_LINES, "1",
-                         IFernflowerPreferences.IGNORE_INVALID_BYTECODE, "1",
-                         IFernflowerPreferences.VERIFY_ANONYMOUS_CLASSES, "1"),
-                  cancellationManager);
+    Map<String, Object> options = new HashMap<>();
+    options.put(IFernflowerPreferences.BYTECODE_SOURCE_MAPPING, "1");
+    options.put(IFernflowerPreferences.DUMP_ORIGINAL_LINES, "1");
+    options.put(IFernflowerPreferences.IGNORE_INVALID_BYTECODE, "1");
+    options.put(IFernflowerPreferences.VERIFY_ANONYMOUS_CLASSES, "1");
+    fixture.setUp(options, cancellationManager);
   }
 
   @After
@@ -84,18 +88,18 @@ public class CancellableTest {
   public void testCancellableClassLambda() { doCancellableTest("pkg/TestClassLambda"); }
 
   private void doCancellableTest(String testFile, String... companionFiles) {
-    var decompiler = fixture.getDecompiler();
+    ConsoleDecompiler decompiler = fixture.getDecompiler();
 
-    var classFile = fixture.getTestDataDir().resolve("classes/" + testFile + ".class");
+    Path classFile = fixture.getTestDataDir().resolve("classes/" + testFile + ".class");
     assertThat(classFile).isRegularFile();
-    for (var file : SingleClassesTest.collectClasses(classFile)) {
+    for (Path file : SingleClassesTest.collectClasses(classFile)) {
       decompiler.addSource(file.toFile());
     }
 
     for (String companionFile : companionFiles) {
-      var companionClassFile = fixture.getTestDataDir().resolve("classes/" + companionFile + ".class");
+      Path companionClassFile = fixture.getTestDataDir().resolve("classes/" + companionFile + ".class");
       assertThat(companionClassFile).isRegularFile();
-      for (var file : SingleClassesTest.collectClasses(companionClassFile)) {
+      for (Path file : SingleClassesTest.collectClasses(companionClassFile)) {
         decompiler.addSource(file.toFile());
       }
     }

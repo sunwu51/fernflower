@@ -50,15 +50,17 @@ public final class IdeaNotNullHelper {
 
     Statement st = stat.getFirst();
     while (st.type == StatementType.SEQUENCE) {
-      if (st.getFirst() instanceof BasicBlockStatement blockStatement &&
-          st.getStats().size() > 1 &&
-          (blockStatement.getExprents() == null ||
-           blockStatement.getExprents().isEmpty())) {
-        st = st.getStats().get(1);
+      Statement first = st.getFirst();
+      if (first instanceof BasicBlockStatement) {
+        BasicBlockStatement blockStatement = (BasicBlockStatement)first;
+        if (st.getStats().size() > 1 &&
+            (blockStatement.getExprents() == null ||
+             blockStatement.getExprents().isEmpty())) {
+          st = st.getStats().get(1);
+          continue;
+        }
       }
-      else {
-        st = st.getFirst();
-      }
+      st = st.getFirst();
     }
 
     if (st.type == StatementType.IF) {
@@ -75,11 +77,15 @@ public final class IdeaNotNullHelper {
           if_condition.type == Exprent.EXPRENT_FUNCTION &&
           ((FunctionExprent)if_condition).getFuncType() == FunctionExprent.FUNCTION_EQ &&
           ifbranch.type == StatementType.BASIC_BLOCK &&
-          ifbranch.getExprents() != null && ifbranch.getExprents().size() == 1 &&
-          (ifbranch.getExprents().get(0).type == Exprent.EXPRENT_EXIT ||
-           (ifbranch.getExprents().get(0) instanceof InvocationExprent invocationExprent &&
-            invocationExprent.getName() != null &&
-            invocationExprent.getName().startsWith(REPORT_NOT_NULL)))) {
+          ifbranch.getExprents() != null && ifbranch.getExprents().size() == 1) {
+        Exprent firstExprent = ifbranch.getExprents().get(0);
+        boolean isExitOrReport = firstExprent.type == Exprent.EXPRENT_EXIT;
+        if (!isExitOrReport && firstExprent instanceof InvocationExprent) {
+          InvocationExprent invocationExprent = (InvocationExprent)firstExprent;
+          isExitOrReport = invocationExprent.getName() != null &&
+                           invocationExprent.getName().startsWith(REPORT_NOT_NULL);
+        }
+        if (isExitOrReport) {
 
         FunctionExprent func = (FunctionExprent)if_condition;
         Exprent first_param = func.getLstOperands().get(0);
@@ -130,6 +136,7 @@ public final class IdeaNotNullHelper {
           }
         }
       }
+      }
 
       if (!is_notnull_check) {
         return false;
@@ -147,27 +154,34 @@ public final class IdeaNotNullHelper {
 
     Statement st = stat.getFirst();
     while (st.type == StatementType.SEQUENCE) {
-      if (st.getFirst() instanceof BasicBlockStatement blockStatement &&
-          st.getStats().size() > 1 &&
-          (blockStatement.getExprents() == null ||
-           blockStatement.getExprents().isEmpty())) {
-        st = st.getStats().get(1);
+      Statement first = st.getFirst();
+      if (first instanceof BasicBlockStatement) {
+        BasicBlockStatement blockStatement = (BasicBlockStatement)first;
+        if (st.getStats().size() > 1 &&
+            (blockStatement.getExprents() == null ||
+             blockStatement.getExprents().isEmpty())) {
+          st = st.getStats().get(1);
+          continue;
+        }
       }
-      else {
-        st = st.getFirst();
-      }
+      st = st.getFirst();
     }
 
     IfStatement ifstat = (IfStatement)st;
-    if (ifstat.getIfstat().getExprents() != null && ifstat.getIfstat().getExprents().size() == 1 &&
-        ifstat.getIfstat().getExprents().get(0) instanceof InvocationExprent invocationExprent && invocationExprent.getName() != null &&
-        invocationExprent.getName().startsWith(REPORT_NOT_NULL)) {
+    if (ifstat.getIfstat().getExprents() != null && ifstat.getIfstat().getExprents().size() == 1) {
+      Exprent exprent = ifstat.getIfstat().getExprents().get(0);
+      if (exprent instanceof InvocationExprent) {
+        InvocationExprent invocationExprent = (InvocationExprent)exprent;
+        if (invocationExprent.getName() != null && invocationExprent.getName().startsWith(REPORT_NOT_NULL)) {
       Statement parent = ifstat.getParent();
       BasicBlockStatement newstat = new BasicBlockStatement(new BasicBlock(ifstat.id));
       newstat.setExprents(new ArrayList<>());
       parent.replaceStatement(ifstat, newstat);
+        return;
+      }
+      }
     }
-    else if (ifstat.getElsestat() != null) { // if - else
+    if (ifstat.getElsestat() != null) { // if - else
       StatEdge ifedge = ifstat.getIfEdge();
       StatEdge elseedge = ifstat.getElseEdge();
 
@@ -288,7 +302,7 @@ public final class IdeaNotNullHelper {
           int sequence_stats_number = sequence.getStats().size();
 
           if (sequence_stats_number > 1 &&
-              sequence.getStats().getLast() == stat &&
+              sequence.getStats().get(sequence.getStats().size() - 1) == stat &&
               sequence.getStats().get(sequence_stats_number - 2).type == StatementType.IF) {
 
             IfStatement ifstat = (IfStatement)sequence.getStats().get(sequence_stats_number - 2);
@@ -307,12 +321,16 @@ public final class IdeaNotNullHelper {
                   second_param.getExprType().getType() == CodeConstants.TYPE_NULL) { // TODO: reversed parameter order
                 if (first_param.equals(exprent_value)) {        // TODO: check for absence of side effects like method invocations etc.
                   if (ifbranch.type == StatementType.BASIC_BLOCK &&
-                      ifbranch.getExprents().size() == 1 &&
-                      // TODO: special check for IllegalStateException
-                      (ifbranch.getExprents().get(0).type == Exprent.EXPRENT_EXIT  ||
-                       (ifbranch.getExprents().get(0) instanceof InvocationExprent invocationExprent &&
-                        invocationExprent.getName() != null &&
-                        invocationExprent.getName().startsWith(REPORT_NOT_NULL)))) {
+                      ifbranch.getExprents().size() == 1) {
+                    Exprent firstExprent = ifbranch.getExprents().get(0);
+                    boolean isExitOrReport = firstExprent.type == Exprent.EXPRENT_EXIT;
+                    if (!isExitOrReport && firstExprent instanceof InvocationExprent) {
+                      InvocationExprent invocationExprent = (InvocationExprent)firstExprent;
+                      isExitOrReport = invocationExprent.getName() != null &&
+                                       invocationExprent.getName().startsWith(REPORT_NOT_NULL);
+                    }
+                    // TODO: special check for IllegalStateException
+                    if (isExitOrReport) {
 
                     ifstat.removeSuccessor(ifstat.getAllSuccessorEdges().get(0)); // remove 'else' edge
 
@@ -331,6 +349,7 @@ public final class IdeaNotNullHelper {
                     sequence.setFirst(sequence.getStats().get(0));
 
                     return true;
+                  }
                   }
                 }
               }

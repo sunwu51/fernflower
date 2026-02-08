@@ -114,7 +114,8 @@ public class IfExprent extends Exprent {
   @Override
   public boolean equals(Object o) {
     if (o == this) return true;
-    if (!(o instanceof IfExprent ie)) return false;
+    if (!(o instanceof IfExprent)) return false;
+    IfExprent ie = (IfExprent)o;
 
     return Objects.equals(condition, ie.getCondition());
   }

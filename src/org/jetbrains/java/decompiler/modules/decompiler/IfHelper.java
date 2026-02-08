@@ -430,7 +430,7 @@ public final class IfHelper {
                  hasDirectEndEdge(ifstat.getIfstat(), from);
     }
 
-    Statement last = parent.type == StatementType.SEQUENCE ? parent.getStats().getLast() : ifstat;
+    Statement last = parent.type == StatementType.SEQUENCE ? parent.getStats().get(parent.getStats().size() - 1) : ifstat;
     noelsestat = (last == ifstat);
 
     elsedirect = !last.getAllSuccessorEdges().isEmpty() && last.getAllSuccessorEdges().get(0).getType() == EdgeType.FINALLY_EXIT ||
@@ -622,33 +622,34 @@ public final class IfHelper {
 
     if (stat.getExprents() == null) {
       switch (stat.type) {
-        case SEQUENCE -> {
-          return hasDirectEndEdge(stat.getStats().getLast(), from);
-        }
-        case CATCH_ALL, TRY_CATCH -> {
+        case SEQUENCE:
+          return hasDirectEndEdge(stat.getStats().get(stat.getStats().size() - 1), from);
+        case CATCH_ALL:
+        case TRY_CATCH:
           for (Statement st : stat.getStats()) {
             if (hasDirectEndEdge(st, from)) {
               return true;
             }
           }
-        }
-        case IF -> {
+          break;
+        case IF:
           IfStatement ifstat = (IfStatement)stat;
           if (ifstat.iftype == IfStatement.IFTYPE_IFELSE) {
             return hasDirectEndEdge(ifstat.getIfstat(), from) ||
                    hasDirectEndEdge(ifstat.getElsestat(), from);
           }
-        }
-        case SYNCHRONIZED -> {
+          break;
+        case SYNCHRONIZED:
           return hasDirectEndEdge(stat.getStats().get(1), from);
-        }
-        case SWITCH -> {
+        case SWITCH:
           for (Statement st : stat.getStats()) {
             if (hasDirectEndEdge(st, from)) {
               return true;
             }
           }
-        }
+          break;
+        default:
+          break;
       }
     }
 
@@ -658,22 +659,22 @@ public final class IfHelper {
   private static Statement getNextStatement(Statement stat) {
     Statement parent = stat.getParent();
     switch (parent.type) {
-      case ROOT -> {
+      case ROOT:
         return ((RootStatement)parent).getDummyExit();
-      }
-      case DO -> {
+      case DO:
         return parent;
-      }
-      case SEQUENCE -> {
+      case SEQUENCE:
         SequenceStatement sequence = (SequenceStatement)parent;
-        if (sequence.getStats().getLast() != stat) {
+        if (sequence.getStats().get(sequence.getStats().size() - 1) != stat) {
           for (int i = sequence.getStats().size() - 1; i >= 0; i--) {
             if (sequence.getStats().get(i) == stat) {
               return sequence.getStats().get(i + 1);
             }
           }
         }
-      }
+        break;
+      default:
+        break;
     }
 
     return getNextStatement(parent);

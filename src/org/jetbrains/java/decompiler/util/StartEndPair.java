@@ -1,7 +1,22 @@
 // Copyright 2000-2024 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package org.jetbrains.java.decompiler.util;
 
-public record StartEndPair(int start, int end) {
+public final class StartEndPair {
+  private final int start;
+  private final int end;
+
+  public StartEndPair(int start, int end) {
+    this.start = start;
+    this.end = end;
+  }
+
+  public int start() {
+    return start;
+  }
+
+  public int end() {
+    return end;
+  }
 
   @Override
   public String toString() {

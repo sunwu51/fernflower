@@ -29,6 +29,7 @@ import org.jetbrains.java.decompiler.struct.StructField;
 import org.jetbrains.java.decompiler.struct.StructMethod;
 import org.jetbrains.java.decompiler.struct.attr.StructEnclosingMethodAttribute;
 import org.jetbrains.java.decompiler.struct.attr.StructGeneralAttribute;
+import org.jetbrains.java.decompiler.struct.attr.StructMethodParametersAttribute;
 import org.jetbrains.java.decompiler.struct.attr.StructLocalVariableTableAttribute.LocalVariable;
 import org.jetbrains.java.decompiler.struct.gen.MethodDescriptor;
 import org.jetbrains.java.decompiler.struct.gen.VarType;
@@ -418,12 +419,12 @@ public class NestedClassProcessor {
       // set resulting constructor signatures
       for (Entry<String, List<VarFieldPair>> entry : enclosing.getValue().entrySet()) {
         mergeListSignatures(entry.getValue(), interPairMask, false);
-        var wrapper = nestedNode.getWrapper().getMethodWrapper(CodeConstants.INIT_NAME, entry.getKey());
+        MethodWrapper wrapper = nestedNode.getWrapper().getMethodWrapper(CodeConstants.INIT_NAME, entry.getKey());
 
         List<VarVersion> mask = new ArrayList<>(entry.getValue().size());
-        var attr = wrapper.methodStruct.getAttribute(StructGeneralAttribute.ATTRIBUTE_METHOD_PARAMETERS);
+        StructMethodParametersAttribute attr = wrapper.methodStruct.getAttribute(StructGeneralAttribute.ATTRIBUTE_METHOD_PARAMETERS);
         if (attr != null) {
-          for (var param : attr.getEntries()) {
+          for (StructMethodParametersAttribute.Entry param : attr.getEntries()) {
             mask.add((param.myAccessFlags & (CodeConstants.ACC_SYNTHETIC | CodeConstants.ACC_MANDATED)) == 0 &&
                      !groovyClosure(nestedNode) ? null : new VarVersion(-1, 0));
           }
@@ -875,11 +876,17 @@ public class NestedClassProcessor {
         stack.clear();
 
         switch (st.type) {
-          case SEQUENCE -> stack.addAll(0, st.getStats());
-          case IF, ROOT, SWITCH, SYNCHRONIZED -> stack.add(st.getFirst());
-          default -> {
+          case SEQUENCE:
+            stack.addAll(0, st.getStats());
+            break;
+          case IF:
+          case ROOT:
+          case SWITCH:
+          case SYNCHRONIZED:
+            stack.add(st.getFirst());
+            break;
+          default:
             return st;
-          }
         }
       }
     }
@@ -895,8 +902,8 @@ public class NestedClassProcessor {
       int counter = 0;
 
       for (IMatchable obj : stat.getSequentialObjects()) {
-        if (obj instanceof Statement st) {
-
+        if (obj instanceof Statement) {
+          Statement st = (Statement)obj;
           Statement stTemp = getDefStatement(st, classType, setStats);
 
           if (stTemp != null) {
@@ -950,32 +957,44 @@ public class NestedClassProcessor {
       boolean res = false;
 
       switch (expr.type) {
-        case Exprent.EXPRENT_CONST -> {
-          ConstExprent constExpr = (ConstExprent)expr;
-          res = (VarType.VARTYPE_CLASS.equals(constExpr.getConstType()) && classname.equals(constExpr.getValue()) ||
-                 classType.equals(constExpr.getConstType()));
-        }
-        case Exprent.EXPRENT_FIELD -> res = classname.equals(((FieldExprent)expr).getClassname());
-        case Exprent.EXPRENT_INVOCATION -> res = classname.equals(((InvocationExprent)expr).getClassName());
-        case Exprent.EXPRENT_NEW -> {
-          VarType newType = ((NewExprent)expr).getNewType();
-          res = newType.getType() == CodeConstants.TYPE_OBJECT && classname.equals(newType.getValue());
-        }
-        case Exprent.EXPRENT_VAR -> {
-          VarExprent varExpr = (VarExprent)expr;
-          if (varExpr.isDefinition()) {
-            List<VarType> stack = new ArrayList<>();
-            stack.add(varExpr.getDefinitionType());
-            while (!stack.isEmpty()) {
-              VarType varType = stack.remove(0);
-              if (classType.equals(varType) || (varType != null && varType.getArrayDim() > 0 && classType.getValue().equals(varType.getValue()))) {
-                res = true;
-              } else if (varType != null && varType.isGeneric()) {
-                stack.addAll(((GenericType)varType).getArguments());
+        case Exprent.EXPRENT_CONST:
+          {
+            ConstExprent constExpr = (ConstExprent)expr;
+            res = (VarType.VARTYPE_CLASS.equals(constExpr.getConstType()) && classname.equals(constExpr.getValue()) ||
+                   classType.equals(constExpr.getConstType()));
+            break;
+          }
+        case Exprent.EXPRENT_FIELD:
+          res = classname.equals(((FieldExprent)expr).getClassname());
+          break;
+        case Exprent.EXPRENT_INVOCATION:
+          res = classname.equals(((InvocationExprent)expr).getClassName());
+          break;
+        case Exprent.EXPRENT_NEW:
+          {
+            VarType newType = ((NewExprent)expr).getNewType();
+            res = newType.getType() == CodeConstants.TYPE_OBJECT && classname.equals(newType.getValue());
+            break;
+          }
+        case Exprent.EXPRENT_VAR:
+          {
+            VarExprent varExpr = (VarExprent)expr;
+            if (varExpr.isDefinition()) {
+              List<VarType> stack = new ArrayList<>();
+              stack.add(varExpr.getDefinitionType());
+              while (!stack.isEmpty()) {
+                VarType varType = stack.remove(0);
+                if (classType.equals(varType) || (varType != null && varType.getArrayDim() > 0 && classType.getValue().equals(varType.getValue()))) {
+                  res = true;
+                } else if (varType != null && varType.isGeneric()) {
+                  stack.addAll(((GenericType)varType).getArguments());
+                }
               }
             }
+            break;
           }
-        }
+        default:
+          break;
       }
 
       if (res) {
@@ -998,7 +1017,8 @@ public class NestedClassProcessor {
     @Override
     public boolean equals(Object o) {
       if (o == this) return true;
-      if (!(o instanceof VarFieldPair pair)) return false;
+      if (!(o instanceof VarFieldPair)) return false;
+      VarFieldPair pair = (VarFieldPair)o;
 
       return fieldKey.equals(pair.fieldKey) && varPair.equals(pair.varPair);
     }

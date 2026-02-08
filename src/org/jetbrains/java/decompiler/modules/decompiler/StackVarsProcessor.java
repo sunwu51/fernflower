@@ -418,8 +418,9 @@ public final class StackVarsProcessor {
 
     if (!notdom && !vernotreplaced) {
       if (left.getLVTEntry() != null && right.type == Exprent.EXPRENT_VAR &&
-          right instanceof VarExprent rightVarExprent &&
-          rightVarExprent.getLVTEntry() == null) {
+          right instanceof VarExprent) {
+        VarExprent rightVarExprent = (VarExprent)right;
+        if (rightVarExprent.getLVTEntry() == null) {
         //try to save at least name
         VarProcessor processor = rightVarExprent.getProcessor();
         String name = processor.getVarName(rightVarExprent.getVarVersion());
@@ -432,6 +433,7 @@ public final class StackVarsProcessor {
             lvt == null &&
             processor.getAssignedVarName(rightVarExprent.getVarVersion()) == null) {
           processor.setAssignedVarName(rightVarExprent.getVarVersion(), left.getName());
+        }
         }
       }
       // remove assignment

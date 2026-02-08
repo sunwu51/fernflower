@@ -317,11 +317,17 @@ public class VarDefinitionHelper {
           stack.clear();
 
           switch (st.type) {
-            case SEQUENCE -> stack.addAll(0, st.getStats());
-            case IF, ROOT, SWITCH, SYNCHRONIZED -> stack.add(st.getFirst());
-            default -> {
+            case SEQUENCE:
+              stack.addAll(0, st.getStats());
+              break;
+            case IF:
+            case ROOT:
+            case SWITCH:
+            case SYNCHRONIZED:
+              stack.add(st.getFirst());
+              break;
+            default:
               return st;
-            }
           }
         }
       }
@@ -343,7 +349,8 @@ public class VarDefinitionHelper {
       List<Exprent> currVars = new ArrayList<>();
 
       for (IMatchable obj : stat.getSequentialObjects()) {
-        if (obj instanceof Statement st) {
+        if (obj instanceof Statement) {
+          Statement st = (Statement)obj;
           childVars.addAll(initStatement(st));
 
           if (st.type == StatementType.DO) {
@@ -558,16 +565,25 @@ public class VarDefinitionHelper {
       }
     }
 
-    Map<Integer, VarVersion> scoped = switch (stat.type) { // These are the type of statements that leak vars
-      case BASIC_BLOCK, GENERAL, ROOT, SEQUENCE -> leaked;
-      default -> null;
-    };
+    Map<Integer, VarVersion> scoped; // These are the type of statements that leak vars
+    switch (stat.type) {
+      case BASIC_BLOCK:
+      case GENERAL:
+      case ROOT:
+      case SEQUENCE:
+        scoped = leaked;
+        break;
+      default:
+        scoped = null;
+        break;
+    }
 
     if (stat.getExprents() == null) {
       List<IMatchable> objs = stat.getSequentialObjects();
       for (int i = 0; i < objs.size(); i++) {
         Object obj = objs.get(i);
-        if (obj instanceof Statement st) {
+        if (obj instanceof Statement) {
+          Statement st = (Statement)obj;
 
           //Map<VarVersionPair, VarVersionPair> blacklist_n = new HashMap<VarVersionPair, VarVersionPair>();
           Map<Integer, VarVersion> leaked_n = new HashMap<>();
@@ -617,7 +633,8 @@ public class VarDefinitionHelper {
             this_vars.putAll(leaked_n);
           }
         }
-        else if (obj instanceof Exprent exprent) {
+        else if (obj instanceof Exprent) {
+          Exprent exprent = (Exprent)obj;
           VPPEntry ret = processExprent(exprent, this_vars, scoped, blacklist);
           if (ret != null && isVarReadFirst(ret.getValue(), stat, i + 1)) {
             return ret;
@@ -945,11 +962,11 @@ public class VarDefinitionHelper {
     }
 
     for (IMatchable obj : stat.getExprentsOrSequentialObjects()) {
-      if (obj instanceof Statement statement) {
-        findTypes(statement, types);
+      if (obj instanceof Statement) {
+        findTypes((Statement)obj, types);
       }
-      else if (obj instanceof Exprent exprent) {
-        findTypes(exprent, types);
+      else if (obj instanceof Exprent) {
+        findTypes((Exprent)obj, types);
       }
     }
   }
@@ -986,11 +1003,11 @@ public class VarDefinitionHelper {
     }
 
     for (IMatchable obj : stat.getExprentsOrSequentialObjects()) {
-      if (obj instanceof Statement statement) {
-        applyTypes(statement, types);
+      if (obj instanceof Statement) {
+        applyTypes((Statement)obj, types);
       }
-      else if (obj instanceof Exprent exprent) {
-        applyTypes(exprent, types);
+      else if (obj instanceof Exprent) {
+        applyTypes((Exprent)obj, types);
       }
     }
   }

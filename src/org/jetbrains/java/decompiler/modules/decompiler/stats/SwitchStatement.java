@@ -200,13 +200,16 @@ public final class SwitchStatement extends Statement {
         else {
           buf.appendIndent(indent + 1).append("case ");
           Exprent value = values.get(j);
-          if (value instanceof ConstExprent constExprent && !constExprent.isNull()) {
+          if (value instanceof ConstExprent) {
+            ConstExprent constExprent = (ConstExprent)value;
+            if (!constExprent.isNull()) {
             value = value.copy();
             if (switchType.getType() != TYPE_OBJECT) {
               ((ConstExprent)value).setConstType(switchType);
             }
             else if (((JAVA_LANG_CHARACTER).equals(switchType.getValue()))) {
               ((ConstExprent)value).setConstType(VARTYPE_CHAR);
+            }
             }
           }
           if (value instanceof FieldExprent && ((FieldExprent)value).isStatic()) { // enum values
@@ -234,22 +237,34 @@ public final class SwitchStatement extends Statement {
       }
       //example:
       //case 0: break
-      if (canBeRule && stat instanceof BasicBlockStatement blockStatement && blockStatement.getBlock().getSeq().isEmpty() &&
-          (stat.getExprents() == null || stat.getExprents().isEmpty())) {
-        buf.append("{ }").appendLineSeparator();
-        tracer.incrementCurrentSourceLine();
+      boolean handledEmptyRuleBlock = false;
+      if (canBeRule && stat instanceof BasicBlockStatement) {
+        BasicBlockStatement blockStatement = (BasicBlockStatement)stat;
+        if (blockStatement.getBlock().getSeq().isEmpty() &&
+            (stat.getExprents() == null || stat.getExprents().isEmpty())) {
+          buf.append("{ }").appendLineSeparator();
+          tracer.incrementCurrentSourceLine();
+          handledEmptyRuleBlock = true;
+        }
       }
-      else {
-        if (canBeRule && stat instanceof BasicBlockStatement blockStatement && blockStatement.getExprents() != null &&
-            (blockStatement.getExprents().size() > 1 ||
-             (blockStatement.getExprents().size() == 1 &&
-              blockStatement.getExprents().get(0) instanceof ExitExprent exitExprent &&
-              exitExprent.getExitType() == ExitExprent.EXIT_RETURN))) {
-          TextBuffer buffer = ExprProcessor.jmpWrapper(stat, indent + 2, false, tracer);
-          buf.append("{").appendLineSeparator();
-          tracer.incrementCurrentSourceLine();
-          buf.append(buffer).appendIndent(indent + 1).append("}").appendLineSeparator();
-          tracer.incrementCurrentSourceLine();
+      if (!handledEmptyRuleBlock) {
+        if (canBeRule && stat instanceof BasicBlockStatement) {
+          BasicBlockStatement blockStatement = (BasicBlockStatement)stat;
+          if (blockStatement.getExprents() != null &&
+              (blockStatement.getExprents().size() > 1 ||
+               (blockStatement.getExprents().size() == 1 &&
+                blockStatement.getExprents().get(0) instanceof ExitExprent &&
+                ((ExitExprent)blockStatement.getExprents().get(0)).getExitType() == ExitExprent.EXIT_RETURN))) {
+            TextBuffer buffer = ExprProcessor.jmpWrapper(stat, indent + 2, false, tracer);
+            buf.append("{").appendLineSeparator();
+            tracer.incrementCurrentSourceLine();
+            buf.append(buffer).appendIndent(indent + 1).append("}").appendLineSeparator();
+            tracer.incrementCurrentSourceLine();
+          }
+          else {
+            TextBuffer buffer = ExprProcessor.jmpWrapper(stat, canBeRule ? 0 : indent + 2, false, tracer);
+            buf.append(buffer);
+          }
         }
         else {
           TextBuffer buffer = ExprProcessor.jmpWrapper(stat, canBeRule ? 0 : indent + 2, false, tracer);

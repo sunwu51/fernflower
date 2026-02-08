@@ -441,9 +441,11 @@ public final class ExceptionDeobfuscator {
             break;
           }
           PooledConstant constant = cl.getPool().getConstant(instr.operand(0));
-          if (constant instanceof PrimitiveConstant primitiveConstant &&
-              "java/lang/MatchException".equals(primitiveConstant.value)) {
-            found = true;
+          if (constant instanceof PrimitiveConstant) {
+            PrimitiveConstant primitiveConstant = (PrimitiveConstant)constant;
+            if ("java/lang/MatchException".equals(primitiveConstant.value)) {
+              found = true;
+            }
           }
         }
       }

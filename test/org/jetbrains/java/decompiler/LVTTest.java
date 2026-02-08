@@ -5,20 +5,21 @@ import org.jetbrains.java.decompiler.main.extern.IFernflowerPreferences;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 
 public class LVTTest extends SingleClassesTestBase {
   @Override
   protected Map<String, Object> getDecompilerOptions() {
-    return Map.of(
-      IFernflowerPreferences.DECOMPILE_INNER,"1",
-      IFernflowerPreferences.DECOMPILE_GENERIC_SIGNATURES,"1",
-      IFernflowerPreferences.ASCII_STRING_CHARACTERS,"1",
-      IFernflowerPreferences.LOG_LEVEL, "TRACE",
-      IFernflowerPreferences.REMOVE_SYNTHETIC, "1",
-      IFernflowerPreferences.REMOVE_BRIDGE, "1",
-      IFernflowerPreferences.USE_DEBUG_VAR_NAMES, "1"
-    );
+    Map<String, Object> options = new HashMap<>();
+    options.put(IFernflowerPreferences.DECOMPILE_INNER,"1");
+    options.put(IFernflowerPreferences.DECOMPILE_GENERIC_SIGNATURES,"1");
+    options.put(IFernflowerPreferences.ASCII_STRING_CHARACTERS,"1");
+    options.put(IFernflowerPreferences.LOG_LEVEL, "TRACE");
+    options.put(IFernflowerPreferences.REMOVE_SYNTHETIC, "1");
+    options.put(IFernflowerPreferences.REMOVE_BRIDGE, "1");
+    options.put(IFernflowerPreferences.USE_DEBUG_VAR_NAMES, "1");
+    return options;
   }
 
   @Override

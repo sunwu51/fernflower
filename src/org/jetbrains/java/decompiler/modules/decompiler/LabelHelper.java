@@ -189,7 +189,8 @@ public final class LabelHelper {
 
 
     switch (stat.type) {
-      case TRY_CATCH, CATCH_ALL -> {
+      case TRY_CATCH:
+      case CATCH_ALL:
         for (Statement st : stat.getStats()) {
           HashMap<Statement, List<StatEdge>> mapEdges1 = setExplicitEdges(st);
           processEdgesWithNext(st, mapEdges1, null);
@@ -208,12 +209,12 @@ public final class LabelHelper {
             }
           }
         }
-      }
-      case DO -> {
+        break;
+      case DO:
         mapEdges = setExplicitEdges(stat.getFirst());
         processEdgesWithNext(stat.getFirst(), mapEdges, stat);
-      }
-      case IF -> {
+        break;
+      case IF:
         IfStatement ifstat = (IfStatement)stat;
         // head statement is a basic block
         if (ifstat.getIfstat() == null) { // empty if
@@ -241,12 +242,12 @@ public final class LabelHelper {
             }
           }
         }
-      }
-      case ROOT -> {
+        break;
+      case ROOT:
         mapEdges = setExplicitEdges(stat.getFirst());
         processEdgesWithNext(stat.getFirst(), mapEdges, ((RootStatement)stat).getDummyExit());
-      }
-      case SEQUENCE -> {
+        break;
+      case SEQUENCE:
         int index = 0;
         while (index < stat.getStats().size() - 1) {
           Statement st = stat.getStats().get(index);
@@ -257,8 +258,8 @@ public final class LabelHelper {
         Statement st = stat.getStats().get(index);
         mapEdges = setExplicitEdges(st);
         processEdgesWithNext(st, mapEdges, null);
-      }
-      case SWITCH -> {
+        break;
+      case SWITCH:
         SwitchStatement swst = (SwitchStatement)stat;
 
         for (int i = 0; i < swst.getCaseStatements().size() - 1; i++) {
@@ -283,14 +284,16 @@ public final class LabelHelper {
             processEdgesWithNext(stlast, mapEdges, null);
           }
         }
-      }
-      case SYNCHRONIZED -> {
+        break;
+      case SYNCHRONIZED:
         SynchronizedStatement synstat = (SynchronizedStatement)stat;
 
         processEdgesWithNext(synstat.getFirst(), setExplicitEdges(stat.getFirst()), synstat.getBody()); // FIXME: basic block?
         mapEdges = setExplicitEdges(synstat.getBody());
         processEdgesWithNext(synstat.getBody(), mapEdges, null);
-      }
+        break;
+      default:
+        break;
     }
 
 

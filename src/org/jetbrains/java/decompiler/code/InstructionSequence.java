@@ -71,7 +71,8 @@ public abstract class InstructionSequence {
   }
 
   public Instruction getLastInstr() {
-  return collinstr.getLast();
+    if (collinstr.isEmpty()) return null;
+    return collinstr.get(collinstr.size() - 1);
   }
 
   public int getOffset(int index) {

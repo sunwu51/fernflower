@@ -188,7 +188,7 @@ public class JADNameProvider implements IVariableNameProvider {
 
     String name = "unknown";
     if (amount == 1) {
-      name = names.getFirst() + (id == 0 && holder.skip_zero ? "" : id);
+      name = names.get(0) + (id == 0 && holder.skip_zero ? "" : id);
     }
     else if (amount != 0) {
       int num = id / amount;

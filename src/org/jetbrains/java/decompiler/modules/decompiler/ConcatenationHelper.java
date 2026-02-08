@@ -101,15 +101,15 @@ public final class ConcatenationHelper {
       int found = 0;
 
       switch (exprTmp.type) {
-        case Exprent.EXPRENT_INVOCATION -> {
+        case Exprent.EXPRENT_INVOCATION:
           InvocationExprent iex = (InvocationExprent)exprTmp;
           if (isAppendConcat(iex, cltype)) {
             lstOperands.add(0, iex.getParameters().get(0));
             exprTmp = iex.getInstance();
             found = 1;
           }
-        }
-        case Exprent.EXPRENT_NEW -> {
+          break;
+        case Exprent.EXPRENT_NEW:
           NewExprent nex = (NewExprent)exprTmp;
           if (isNewConcat(nex, cltype)) {
             VarType[] params = nex.getConstructor().getDescriptor().params;
@@ -118,7 +118,7 @@ public final class ConcatenationHelper {
             }
             found = 2;
           }
-        }
+          break;
       }
 
       if (found == 0) {
@@ -196,7 +196,7 @@ public final class ConcatenationHelper {
           if (c == TAG_CONST || c == TAG_ARG) {
             // Detected a special tag, flush all accumulated characters
             // as a constant first:
-            if (!acc.isEmpty()) {
+            if (acc.length() > 0) {
               res.add(new ConstExprent(VarType.VARTYPE_STRING, acc.toString(), expr.bytecode));
               acc.setLength(0);
             }
@@ -232,7 +232,7 @@ public final class ConcatenationHelper {
         }
 
         // Flush the remaining characters as constant:
-        if (!acc.isEmpty()) {
+        if (acc.length() > 0) {
           res.add(new ConstExprent(VarType.VARTYPE_STRING, acc.toString(), expr.bytecode));
         }
 

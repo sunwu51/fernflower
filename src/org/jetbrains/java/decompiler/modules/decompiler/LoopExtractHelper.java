@@ -104,7 +104,7 @@ public final class LoopExtractHelper {
     }
 
     if (!stats.isEmpty()) { // In this case prioritize first to help the Loop enhancer
-      if (stat.getParent().getStats().getLast() != stat) {
+      if (stat.getParent().getStats().get(stat.getParent().getStats().size() - 1) != stat) {
         return false;
       }
     }
@@ -122,7 +122,7 @@ public final class LoopExtractHelper {
     // search for an if condition at the end of the loop
     Statement last = stat.getFirst();
     while (last.type == StatementType.SEQUENCE) {
-      last = last.getStats().getLast();
+      last = last.getStats().get(last.getStats().size() - 1);
     }
 
     if (last.type == StatementType.IF) {

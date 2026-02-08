@@ -461,7 +461,8 @@ public class NewExprent extends Exprent {
   @Override
   public boolean equals(Object o) {
     if (o == this) return true;
-    if (!(o instanceof NewExprent ne)) return false;
+    if (!(o instanceof NewExprent)) return false;
+    NewExprent ne = (NewExprent)o;
 
     return Objects.equals(newType, ne.newType) &&
            Objects.equals(lstDims, ne.lstDims) &&

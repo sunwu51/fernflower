@@ -50,13 +50,14 @@ public abstract class StructMember {
 
   public boolean hasModifier(int modifier) {
     boolean result = (accessFlags & modifier) == modifier;
-    if (!result && modifier == CodeConstants.ACC_STATIC &&
-        this instanceof StructClass struct &&
-        struct.hasAttribute(StructGeneralAttribute.ATTRIBUTE_INNER_CLASSES)) {
-      StructInnerClassesAttribute attr = struct.getAttribute(StructGeneralAttribute.ATTRIBUTE_INNER_CLASSES);
-      for (StructInnerClassesAttribute.Entry entry : attr.getEntries()) {
-        if (entry.innerName != null && entry.innerName.equals(struct.qualifiedName)) {
-          return (entry.accessFlags & CodeConstants.ACC_STATIC) == CodeConstants.ACC_STATIC;
+    if (!result && modifier == CodeConstants.ACC_STATIC && this instanceof StructClass) {
+      StructClass struct = (StructClass)this;
+      if (struct.hasAttribute(StructGeneralAttribute.ATTRIBUTE_INNER_CLASSES)) {
+        StructInnerClassesAttribute attr = struct.getAttribute(StructGeneralAttribute.ATTRIBUTE_INNER_CLASSES);
+        for (StructInnerClassesAttribute.Entry entry : attr.getEntries()) {
+          if (entry.innerName != null && entry.innerName.equals(struct.qualifiedName)) {
+            return (entry.accessFlags & CodeConstants.ACC_STATIC) == CodeConstants.ACC_STATIC;
+          }
         }
       }
     }
@@ -77,8 +78,8 @@ public abstract class StructMember {
     if (type == null) return false; // when there is no type reference no collision is possible
     Set<AnnotationExprent> typeAnnotations = TargetInfo.EmptyTarget.extract(getPossibleTypeAnnotationCollisions())
       .stream()
-      .map(typeAnnotation-> typeAnnotation.getAnnotationExpr())
-      .collect(Collectors.toUnmodifiableSet());
+      .map(typeAnnotation -> typeAnnotation.getAnnotationExpr())
+      .collect(Collectors.toSet());
     return typeAnnotations.contains(typeAnnotationExpr);
   }
 
@@ -88,8 +89,8 @@ public abstract class StructMember {
   public boolean paramAnnCollidesWithTypeAnnotation(AnnotationExprent typeAnnotationExpr, int param) {
     Set<AnnotationExprent> typeAnnotations = TargetInfo.FormalParameterTarget
       .extract(getPossibleTypeAnnotationCollisions(), param).stream()
-      .map(typeAnnotation-> typeAnnotation.getAnnotationExpr())
-      .collect(Collectors.toUnmodifiableSet());
+      .map(typeAnnotation -> typeAnnotation.getAnnotationExpr())
+      .collect(Collectors.toSet());
     return typeAnnotations.contains(typeAnnotationExpr);
   }
 

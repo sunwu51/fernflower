@@ -102,17 +102,19 @@ public final class EliminateLoopsHelper {
 
     boolean firstok = loopcontent.getAllSuccessorEdges().isEmpty();
     if (loopcontent.type == Statement.StatementType.SWITCH &&
-        loopcontent instanceof SwitchStatement switchStatement &&
-        switchStatement.getHeadExprent() != null &&
-        SwitchPatternHelper.isBootstrapSwitch(switchStatement.getHeadExprent())) {
-      Set<StatEdge> allEdges = new HashSet<>();
-      for (Statement statement : switchStatement.getCaseStatements()) {
-        allEdges.addAll(statement.getAllSuccessorEdges());
-      }
-      //not a good workaround, but there is not another key, because edges are broken at this moment
-      if (allEdges.stream()
-            .anyMatch(edge -> edge.closure.type == Statement.StatementType.DO)) {
-        return false;
+        loopcontent instanceof SwitchStatement) {
+      SwitchStatement switchStatement = (SwitchStatement)loopcontent;
+      if (switchStatement.getHeadExprent() != null &&
+          SwitchPatternHelper.isBootstrapSwitch(switchStatement.getHeadExprent())) {
+        Set<StatEdge> allEdges = new HashSet<>();
+        for (Statement statement : switchStatement.getCaseStatements()) {
+          allEdges.addAll(statement.getAllSuccessorEdges());
+        }
+        //not a good workaround, but there is not another key, because edges are broken at this moment
+        if (allEdges.stream()
+              .anyMatch(edge -> edge.closure.type == Statement.StatementType.DO)) {
+          return false;
+        }
       }
     }
     if (!firstok) {

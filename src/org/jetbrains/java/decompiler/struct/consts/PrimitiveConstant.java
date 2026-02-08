@@ -44,7 +44,8 @@ public class PrimitiveConstant extends PooledConstant {
   @Override
   public boolean equals(Object o) {
     if (o == this) return true;
-    if (!(o instanceof PrimitiveConstant cn)) return false;
+    if (!(o instanceof PrimitiveConstant)) return false;
+    PrimitiveConstant cn = (PrimitiveConstant)o;
 
     return this.type == cn.type &&
            this.isArray == cn.isArray &&

@@ -5,6 +5,7 @@ import org.jetbrains.java.decompiler.main.extern.IFernflowerPreferences;
 import org.jetbrains.java.decompiler.modules.decompiler.exps.ConstExprent;
 import org.junit.Test;
 
+import java.util.Collections;
 import java.util.Map;
 
 import static junit.framework.TestCase.assertEquals;
@@ -13,8 +14,7 @@ public class TrimHelperTest extends SingleClassesTestBase {
 
   @Override
   protected Map<String, Object> getDecompilerOptions() {
-    return Map.of(IFernflowerPreferences.STANDARDIZE_FLOATING_POINT_NUMBERS, "1"
-    );
+    return Collections.<String, Object>singletonMap(IFernflowerPreferences.STANDARDIZE_FLOATING_POINT_NUMBERS, "1");
   }
 
   @Test

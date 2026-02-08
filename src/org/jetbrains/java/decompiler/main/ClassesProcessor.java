@@ -65,14 +65,20 @@ public class ClassesProcessor {
     }
 
     private String getType() {
-      return switch (type) {
-        case ClassNode.CLASS_ANONYMOUS -> "ANONYMOUS";
-        case ClassNode.CLASS_LAMBDA -> "LAMBDA";
-        case ClassNode.CLASS_LOCAL -> "LOCAL";
-        case ClassNode.CLASS_MEMBER -> "MEMBER";
-        case ClassNode.CLASS_ROOT -> "ROOT";
-        default -> "UNKNOWN(" + type + ")";
-      };
+      switch (type) {
+        case ClassNode.CLASS_ANONYMOUS:
+          return "ANONYMOUS";
+        case ClassNode.CLASS_LAMBDA:
+          return "LAMBDA";
+        case ClassNode.CLASS_LOCAL:
+          return "LOCAL";
+        case ClassNode.CLASS_MEMBER:
+          return "MEMBER";
+        case ClassNode.CLASS_ROOT:
+          return "ROOT";
+        default:
+          return "UNKNOWN(" + type + ")";
+      }
     }
   }
 
@@ -374,23 +380,27 @@ public class ClassesProcessor {
           for (int i = 0; i < len; i++) {
             Instruction instr = seq.getInstr(i);
             switch (instr.opcode) {
-              case CodeConstants.opc_checkcast, CodeConstants.opc_instanceof -> {
+              case CodeConstants.opc_checkcast:
+              case CodeConstants.opc_instanceof:
                 if (cl.qualifiedName.equals(pool.getPrimitiveConstant(instr.operand(0)).getString())) {
                   refCounter++;
                   refNotNew = true;
                 }
-              }
-              case CodeConstants.opc_new, CodeConstants.opc_anewarray, CodeConstants.opc_multianewarray -> {
+                break;
+              case CodeConstants.opc_new:
+              case CodeConstants.opc_anewarray:
+              case CodeConstants.opc_multianewarray:
                 if (cl.qualifiedName.equals(pool.getPrimitiveConstant(instr.operand(0)).getString())) {
                   refCounter++;
                 }
-              }
-              case CodeConstants.opc_getstatic, CodeConstants.opc_putstatic -> {
+                break;
+              case CodeConstants.opc_getstatic:
+              case CodeConstants.opc_putstatic:
                 if (cl.qualifiedName.equals(pool.getLinkConstant(instr.operand(0)).className)) {
                   refCounter++;
                   refNotNew = true;
                 }
-              }
+                break;
             }
           }
         }

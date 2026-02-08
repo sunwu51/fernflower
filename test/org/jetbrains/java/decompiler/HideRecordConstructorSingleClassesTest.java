@@ -6,6 +6,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public class HideRecordConstructorSingleClassesTest extends SingleClassesTestBase {
@@ -18,16 +19,17 @@ public class HideRecordConstructorSingleClassesTest extends SingleClassesTestBas
 
   @Override
   protected Map<String, Object> getDecompilerOptions() {
-    return Map.of(IFernflowerPreferences.BYTECODE_SOURCE_MAPPING, "1",
-                  IFernflowerPreferences.DUMP_ORIGINAL_LINES, "1",
-                  IFernflowerPreferences.IGNORE_INVALID_BYTECODE, "1",
-                  IFernflowerPreferences.VERIFY_ANONYMOUS_CLASSES, "1",
-                  IFernflowerPreferences.CONVERT_PATTERN_SWITCH, "1",
-                  IFernflowerPreferences.CONVERT_RECORD_PATTERN, "1",
-                  IFernflowerPreferences.INLINE_SIMPLE_LAMBDAS, "1",
-                  IFernflowerPreferences.CHECK_CLOSABLE_INTERFACE, "0",
-                  IFernflowerPreferences.HIDE_RECORD_CONSTRUCTOR_AND_GETTERS, "1"
-    );
+    Map<String, Object> options = new HashMap<>();
+    options.put(IFernflowerPreferences.BYTECODE_SOURCE_MAPPING, "1");
+    options.put(IFernflowerPreferences.DUMP_ORIGINAL_LINES, "1");
+    options.put(IFernflowerPreferences.IGNORE_INVALID_BYTECODE, "1");
+    options.put(IFernflowerPreferences.VERIFY_ANONYMOUS_CLASSES, "1");
+    options.put(IFernflowerPreferences.CONVERT_PATTERN_SWITCH, "1");
+    options.put(IFernflowerPreferences.CONVERT_RECORD_PATTERN, "1");
+    options.put(IFernflowerPreferences.INLINE_SIMPLE_LAMBDAS, "1");
+    options.put(IFernflowerPreferences.CHECK_CLOSABLE_INTERFACE, "0");
+    options.put(IFernflowerPreferences.HIDE_RECORD_CONSTRUCTOR_AND_GETTERS, "1");
+    return options;
   }
 
   @Test public void testHideConstructorRecordEmpty() { doTest("records/TestHideConstructorRecordEmpty"); }

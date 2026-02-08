@@ -67,7 +67,8 @@ public class LinkConstant extends PooledConstant {
   @Override
   public boolean equals(Object o) {
     if (o == this) return true;
-    if (!(o instanceof LinkConstant cn)) return false;
+    if (!(o instanceof LinkConstant)) return false;
+    LinkConstant cn = (LinkConstant)o;
 
     return this.type == cn.type &&
            this.elementName.equals(cn.elementName) &&

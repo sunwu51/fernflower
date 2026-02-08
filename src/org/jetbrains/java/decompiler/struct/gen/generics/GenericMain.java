@@ -118,13 +118,17 @@ public final class GenericMain {
     loop:
     while (index < signature.length()) {
       switch (signature.charAt(index)) {
-        case '<' -> counter++;
-        case '>' -> {
+        case '<':
+          counter++;
+          break;
+        case '>':
           counter--;
           if (counter == 0) {
             break loop;
           }
-        }
+          break;
+        default:
+          break;
       }
 
       index++;
@@ -218,8 +222,12 @@ public final class GenericMain {
   ) {
     return typeAnnWriteHelpers.stream().filter(typeAnnWriteHelper -> {
       StructTypePathEntry path = typeAnnWriteHelper.getPaths().peek();
-      if ((type instanceof GenericType genericType && genericType.getWildcard() != GenericType.WILDCARD_NO ||
-           type == null) && path == null) {
+      boolean hasWildcard = false;
+      if (type instanceof GenericType) {
+        GenericType genericType = (GenericType)type;
+        hasWildcard = genericType.getWildcard() != GenericType.WILDCARD_NO;
+      }
+      if ((hasWildcard || type == null) && path == null) {
         typeAnnWriteHelper.writeTo(sb);
         return false;
       }

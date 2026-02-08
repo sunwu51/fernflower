@@ -76,8 +76,7 @@ public final class MergeHelper {
     LoopType oldLoop = stat.getLoopType();
 
     switch (oldLoop) {
-      case DO -> {
-
+      case DO:
         // identify a while loop
         if (matchWhile(stat)) {
           if (!matchForEach(stat)) {
@@ -88,12 +87,14 @@ public final class MergeHelper {
           // identify a do{}while loop
           //matchDoWhile(stat);
         }
-      }
-      case WHILE -> {
+        break;
+      case WHILE:
         if (!matchForEach(stat)) {
           matchFor(stat);
         }
-      }
+        break;
+      default:
+        break;
     }
 
     return (stat.getLoopType() != oldLoop);
@@ -103,7 +104,7 @@ public final class MergeHelper {
     // search for an if condition at the end of the loop
     Statement last = stat.getFirst();
     while (last.type == StatementType.SEQUENCE) {
-      last = last.getStats().getLast();
+      last = last.getStats().get(last.getStats().size() - 1);
     }
 
     if (last.type == StatementType.IF) {
@@ -838,7 +839,7 @@ public final class MergeHelper {
 
     if (outer != null && (outer.type == Statement.StatementType.SWITCH || ((DoStatement)outer).getLoopType() != DoStatement.LoopType.DO)) {
       Statement parent = stat.getParent();
-      if (parent.type != Statement.StatementType.SEQUENCE || parent.getStats().getLast().equals(stat)) {
+      if (parent.type != Statement.StatementType.SEQUENCE || parent.getStats().get(parent.getStats().size() - 1).equals(stat)) {
         // need to insert a break or continue after the loop
         if (ifedge.getDestination().equals(outer)) {
           stat.addSuccessor(new StatEdge(StatEdge.EdgeType.CONTINUE, stat, ifedge.getDestination(), outer));

@@ -84,7 +84,7 @@ public class GenericType extends VarType implements Type {
                 args = cl.substring(argStart + 1, cl.length() - 1);
               }
 
-              if (!name_buff.isEmpty()) {
+              if (name_buff.length() > 0) {
                 name_buff.append('$');
               }
               name_buff.append(name);
@@ -141,13 +141,19 @@ public class GenericType extends VarType implements Type {
     loop:
     while (index < value.length()) {
       switch (value.charAt(index)) {
-        case '<' -> counter++;
-        case '>' -> counter--;
-        case '.' -> {
+        case '<':
+          counter++;
+          break;
+        case '>':
+          counter--;
+          break;
+        case '.':
           if (counter == 0) {
             break loop;
           }
-        }
+          break;
+        default:
+          break;
       }
 
       index++;
@@ -166,12 +172,21 @@ public class GenericType extends VarType implements Type {
     while (!value.isEmpty()) {
       String typeStr = getNextType(value);
       int len = typeStr.length();
-      int wildcard = switch (typeStr.charAt(0)) {
-        case '*' -> WILDCARD_UNBOUND;
-        case '+' -> WILDCARD_EXTENDS;
-        case '-' -> WILDCARD_SUPER;
-        default -> WILDCARD_NO;
-      };
+      int wildcard;
+      switch (typeStr.charAt(0)) {
+        case '*':
+          wildcard = WILDCARD_UNBOUND;
+          break;
+        case '+':
+          wildcard = WILDCARD_EXTENDS;
+          break;
+        case '-':
+          wildcard = WILDCARD_SUPER;
+          break;
+        default:
+          wildcard = WILDCARD_NO;
+          break;
+      }
 
       if (wildcard != WILDCARD_NO) {
         typeStr = typeStr.substring(1);

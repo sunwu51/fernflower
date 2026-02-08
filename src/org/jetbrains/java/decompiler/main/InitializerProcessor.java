@@ -19,15 +19,15 @@ import org.jetbrains.java.decompiler.modules.decompiler.vars.VarVersion;
 import org.jetbrains.java.decompiler.struct.StructClass;
 import org.jetbrains.java.decompiler.struct.StructField;
 import org.jetbrains.java.decompiler.struct.StructMethod;
+import org.jetbrains.java.decompiler.struct.StructRecordComponent;
 import org.jetbrains.java.decompiler.struct.gen.MethodDescriptor;
 import org.jetbrains.java.decompiler.struct.gen.VarType;
 import org.jetbrains.java.decompiler.util.InterpreterUtil;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public final class InitializerProcessor {
   public static void extractInitializers(ClassWrapper wrapper) {
@@ -223,11 +223,13 @@ public final class InitializerProcessor {
       return;
     }
 
-    Set<String> recordComponents = Optional.ofNullable(cl.getRecordComponents())
-      .stream()
-      .flatMap(l -> l.stream())
-      .map(c -> InterpreterUtil.makeUniqueKey(c.getName(), c.getDescriptor()))
-      .collect(Collectors.toSet());
+    Set<String> recordComponents = new HashSet<>();
+    List<StructRecordComponent> recordComponentList = cl.getRecordComponents();
+    if (recordComponentList != null) {
+      for (StructRecordComponent component : recordComponentList) {
+        recordComponents.add(InterpreterUtil.makeUniqueKey(component.getName(), component.getDescriptor()));
+      }
+    }
 
     while (true) {
       String fieldWithDescr = null;
@@ -294,7 +296,7 @@ public final class InitializerProcessor {
 
     for (Exprent expr : lst) {
       switch (expr.type) {
-        case Exprent.EXPRENT_VAR -> {
+        case Exprent.EXPRENT_VAR:
           VarVersion varPair = new VarVersion((VarExprent)expr);
           if (!method.varproc.getExternalVars().contains(varPair)) {
             String varName = method.varproc.getVarName(varPair);
@@ -302,10 +304,9 @@ public final class InitializerProcessor {
               return false;
             }
           }
-        }
-        case Exprent.EXPRENT_FIELD -> {
+          break;
+        case Exprent.EXPRENT_FIELD:
           return false;
-        }
       }
     }
 

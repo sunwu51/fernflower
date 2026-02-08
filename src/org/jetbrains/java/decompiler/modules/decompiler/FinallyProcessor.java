@@ -134,11 +134,18 @@ public class FinallyProcessor {
     BasicBlock firstBasicBlock = firstBlockStatement.getBlock();
     Instruction instrFirst = firstBasicBlock.getInstruction(0);
 
-    int firstCode = switch (instrFirst.opcode) {
-      case CodeConstants.opc_pop -> 1;
-      case CodeConstants.opc_astore -> 2;
-      default -> 0;
-    };
+    int firstCode;
+    switch (instrFirst.opcode) {
+      case CodeConstants.opc_pop:
+        firstCode = 1;
+        break;
+      case CodeConstants.opc_astore:
+        firstCode = 2;
+        break;
+      default:
+        firstCode = 0;
+        break;
+    }
 
     ExprProcessor proc = new ExprProcessor(methodDescriptor, varProcessor);
     proc.processStatement(root, cl);
@@ -275,12 +282,21 @@ public class FinallyProcessor {
       boolean isFirstLast = mapLast.containsKey(firstBasicBlock);
       InstructionSequence seq = firstBasicBlock.getSeq();
 
-      boolean isEmpty = switch (firstCode) {
-        case 0 -> isFirstLast && seq.length() == 1;
-        case 1 -> seq.length() == 1;
-        case 2 -> isFirstLast ? seq.length() == 3 : seq.length() == 1;
-        default -> false;
-      };
+      boolean isEmpty;
+      switch (firstCode) {
+        case 0:
+          isEmpty = isFirstLast && seq.length() == 1;
+          break;
+        case 1:
+          isEmpty = seq.length() == 1;
+          break;
+        case 2:
+          isEmpty = isFirstLast ? seq.length() == 3 : seq.length() == 1;
+          break;
+        default:
+          isEmpty = false;
+          break;
+      }
 
       if (isEmpty) {
         firstCode = 3;

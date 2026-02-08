@@ -188,31 +188,72 @@ public class VarVersionsProcessor {
                              VarType.getCommonMinType(firstMaxType, secondMaxType);
 
               if (firstType.getTypeFamily() == CodeConstants.TYPE_FAMILY_INTEGER && secondType.getTypeFamily() == CodeConstants.TYPE_FAMILY_INTEGER) {
-                type = switch (secondType.getType()) {
-                  case CodeConstants.TYPE_INT -> VarType.VARTYPE_INT;
-                  case CodeConstants.TYPE_SHORT -> firstType.getType() == CodeConstants.TYPE_INT ? null : VarType.VARTYPE_SHORT;
-                  case CodeConstants.TYPE_CHAR -> switch (firstType.getType()) {
-                    case CodeConstants.TYPE_INT, CodeConstants.TYPE_SHORT -> null;
-                    default -> VarType.VARTYPE_CHAR;
-                  };
-                  case CodeConstants.TYPE_SHORTCHAR -> switch (firstType.getType()) {
-                    case CodeConstants.TYPE_INT, CodeConstants.TYPE_SHORT, CodeConstants.TYPE_CHAR -> null;
-                    default -> VarType.VARTYPE_SHORTCHAR;
-                  };
-                  case CodeConstants.TYPE_BYTECHAR -> switch (firstType.getType()) {
-                    case CodeConstants.TYPE_INT, CodeConstants.TYPE_SHORT, CodeConstants.TYPE_CHAR, CodeConstants.TYPE_SHORTCHAR -> null;
-                    default -> VarType.VARTYPE_BYTECHAR;
-                  };
-                  case CodeConstants.TYPE_BYTE -> switch (firstType.getType()) {
-                    case CodeConstants.TYPE_INT, CodeConstants.TYPE_SHORT, CodeConstants.TYPE_CHAR, CodeConstants.TYPE_SHORTCHAR, CodeConstants.TYPE_BYTECHAR ->
-                      null;
-                    default -> VarType.VARTYPE_BYTE;
-                  };
-                  default -> type;
-                };
-                if (type == null) {
+                VarType mergedType = type;
+                switch (secondType.getType()) {
+                  case CodeConstants.TYPE_INT:
+                    mergedType = VarType.VARTYPE_INT;
+                    break;
+                  case CodeConstants.TYPE_SHORT:
+                    mergedType = firstType.getType() == CodeConstants.TYPE_INT ? null : VarType.VARTYPE_SHORT;
+                    break;
+                  case CodeConstants.TYPE_CHAR:
+                    switch (firstType.getType()) {
+                      case CodeConstants.TYPE_INT:
+                      case CodeConstants.TYPE_SHORT:
+                        mergedType = null;
+                        break;
+                      default:
+                        mergedType = VarType.VARTYPE_CHAR;
+                        break;
+                    }
+                    break;
+                  case CodeConstants.TYPE_SHORTCHAR:
+                    switch (firstType.getType()) {
+                      case CodeConstants.TYPE_INT:
+                      case CodeConstants.TYPE_SHORT:
+                      case CodeConstants.TYPE_CHAR:
+                        mergedType = null;
+                        break;
+                      default:
+                        mergedType = VarType.VARTYPE_SHORTCHAR;
+                        break;
+                    }
+                    break;
+                  case CodeConstants.TYPE_BYTECHAR:
+                    switch (firstType.getType()) {
+                      case CodeConstants.TYPE_INT:
+                      case CodeConstants.TYPE_SHORT:
+                      case CodeConstants.TYPE_CHAR:
+                      case CodeConstants.TYPE_SHORTCHAR:
+                        mergedType = null;
+                        break;
+                      default:
+                        mergedType = VarType.VARTYPE_BYTECHAR;
+                        break;
+                    }
+                    break;
+                  case CodeConstants.TYPE_BYTE:
+                    switch (firstType.getType()) {
+                      case CodeConstants.TYPE_INT:
+                      case CodeConstants.TYPE_SHORT:
+                      case CodeConstants.TYPE_CHAR:
+                      case CodeConstants.TYPE_SHORTCHAR:
+                      case CodeConstants.TYPE_BYTECHAR:
+                        mergedType = null;
+                        break;
+                      default:
+                        mergedType = VarType.VARTYPE_BYTE;
+                        break;
+                    }
+                    break;
+                  default:
+                    mergedType = type;
+                    break;
+                }
+                if (mergedType == null) {
                   continue;
                 }
+                type = mergedType;
                 firstType = type;
                 mapExprentMinTypes.put(firstPair, type);
               }

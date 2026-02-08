@@ -4,9 +4,10 @@ plugins {
   application
 }
 
-tasks.compileJava {
-  sourceCompatibility = "21"
-  targetCompatibility = "21"
+java {
+  toolchain {
+    languageVersion = JavaLanguageVersion.of(8)
+  }
 }
 
 sourceSets {

@@ -16,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.HashMap;
@@ -39,12 +40,12 @@ public class DecompilerTestFixture {
 
   public void setUp(@NotNull Map<String, Object> customOptions,
                     @Nullable CancellationManager cancellationManager) throws IOException {
-    testDataDir = Path.of("testData");
-    if (!isTestDataDir(testDataDir)) testDataDir = Path.of("community/plugins/java-decompiler/engine/testData");
-    if (!isTestDataDir(testDataDir)) testDataDir = Path.of("plugins/java-decompiler/engine/testData");
-    if (!isTestDataDir(testDataDir)) testDataDir = Path.of("../community/plugins/java-decompiler/engine/testData");
-    if (!isTestDataDir(testDataDir)) testDataDir = Path.of("../plugins/java-decompiler/engine/testData");
-    assertTrue("cannot find the 'testData' directory relative to " + Path.of("").toAbsolutePath(), isTestDataDir(testDataDir));
+    testDataDir = Paths.get("testData");
+    if (!isTestDataDir(testDataDir)) testDataDir = Paths.get("community/plugins/java-decompiler/engine/testData");
+    if (!isTestDataDir(testDataDir)) testDataDir = Paths.get("plugins/java-decompiler/engine/testData");
+    if (!isTestDataDir(testDataDir)) testDataDir = Paths.get("../community/plugins/java-decompiler/engine/testData");
+    if (!isTestDataDir(testDataDir)) testDataDir = Paths.get("../plugins/java-decompiler/engine/testData");
+    assertTrue("cannot find the 'testData' directory relative to " + Paths.get("").toAbsolutePath(), isTestDataDir(testDataDir));
     testDataDir = testDataDir.toAbsolutePath();
 
     tempDir = Files.createTempDirectory("decompiler_test_dir_");
@@ -108,7 +109,7 @@ public class DecompilerTestFixture {
   }
 
   private static void deleteRecursively(Path file) throws IOException {
-    Files.walkFileTree(file, new SimpleFileVisitor<>() {
+    Files.walkFileTree(file, new SimpleFileVisitor<Path>() {
       @Override
       public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
         Files.delete(file);
@@ -126,7 +127,7 @@ public class DecompilerTestFixture {
   public static void assertFilesEqual(Path expected, Path actual) {
     if (Files.isDirectory(expected)) {
       try {
-        Files.walkFileTree(expected, new SimpleFileVisitor<>() {
+        Files.walkFileTree(expected, new SimpleFileVisitor<Path>() {
           @Override
           public FileVisitResult visitFile(Path expectedFile, BasicFileAttributes attrs) {
             Path actualFile = actual.resolve(expected.relativize(expectedFile));

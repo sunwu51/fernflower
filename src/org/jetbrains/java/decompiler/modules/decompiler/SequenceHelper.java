@@ -48,7 +48,7 @@ public final class SequenceHelper {
             }
 
             // move successors
-            Statement last = st.getStats().getLast();
+            Statement last = st.getStats().get(st.getStats().size() - 1);
             if (last.getAllSuccessorEdges().isEmpty() && i < lst.size() - 1) {
               last.addSuccessor(new StatEdge(EdgeType.REGULAR, last, lst.get(i + 1)));
             }
@@ -147,7 +147,7 @@ public final class SequenceHelper {
 
   private static boolean isSequenceDisbandable(Statement block, Statement next) {
 
-    Statement last = block.getStats().getLast();
+    Statement last = block.getStats().get(block.getStats().size() - 1);
     List<StatEdge> lstSuccs = last.getAllSuccessorEdges();
     if (!lstSuccs.isEmpty()) {
       if (lstSuccs.get(0).getDestination() != next) {
@@ -270,10 +270,15 @@ public final class SequenceHelper {
       return stat;
     }
 
-    return switch (stat.type) {
-      case IF, SEQUENCE, SWITCH, SYNCHRONIZED -> getFirstExprentlist(stat.getFirst());
-      default -> null;
-    };
+    switch (stat.type) {
+      case IF:
+      case SEQUENCE:
+      case SWITCH:
+      case SYNCHRONIZED:
+        return getFirstExprentlist(stat.getFirst());
+      default:
+        return null;
+    }
   }
 
 
