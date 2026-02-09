@@ -21,6 +21,7 @@ import org.jetbrains.java.decompiler.util.JADNameProvider;
 import org.jetbrains.java.decompiler.util.TextBuffer;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -114,6 +115,10 @@ public class Fernflower implements IDecompiledData {
 
   public void addLibrary(File library) {
     structContext.addSpace(library, false);
+  }
+
+  public void addData(String path, String cls, byte[] data, boolean isOwn) throws IOException {
+    structContext.addData(path, cls, data, isOwn);
   }
 
   public void decompileContext() {

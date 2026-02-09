@@ -1,0 +1,39 @@
+name: Release Jar
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Ensure Gradle wrapper is executable
+        run: chmod +x ./gradlew
+
+      - name: Build jar
+        run: ./gradlew jar
+
+      - name: Publish to GitHub Packages
+        run: ./gradlew publish
+
+      - name: Upload jar to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/libs/*.jar

@@ -2,6 +2,15 @@
 plugins {
   java
   application
+  `maven-publish`
+}
+
+group = "io.github.sunwu51"
+val refName = System.getenv("GITHUB_REF_NAME")
+version = when {
+  refName == null -> "0.0.0-SNAPSHOT"
+  refName.startsWith("v") -> refName.removePrefix("v")
+  else -> refName
 }
 
 java {
@@ -46,4 +55,22 @@ tasks.jar {
 
 tasks.test {
   maxHeapSize = "1024m"
+}
+
+publishing {
+  publications {
+    create<MavenPublication>("mavenJava") {
+      from(components["java"])
+    }
+  }
+  repositories {
+    maven {
+      name = "GitHubPackages"
+      url = uri("https://maven.pkg.github.com/sunwu51/fernflower")
+      credentials {
+        username = System.getenv("GITHUB_ACTOR") ?: (findProperty("gpr.user") as String?)
+        password = System.getenv("GITHUB_TOKEN") ?: (findProperty("gpr.key") as String?)
+      }
+    }
+  }
 }
