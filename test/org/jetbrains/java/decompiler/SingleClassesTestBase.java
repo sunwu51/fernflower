@@ -30,8 +30,6 @@ public abstract class SingleClassesTestBase {
   public void setUp() throws IOException {
     fixture = new DecompilerTestFixture();
     fixture.setUp(getDecompilerOptions());
-    // keep outputs for debugging failing tests
-    fixture.setCleanup(false);
   }
 
   @After

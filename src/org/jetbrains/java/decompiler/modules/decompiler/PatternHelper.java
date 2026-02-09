@@ -55,24 +55,11 @@ public final class PatternHelper {
   public static void replaceAssignmentsWithPatternVariables(@NotNull RootStatement statement, @NotNull StructClass structClass) {
     if (!structClass.hasPatternsInInstanceofSupport()) return;
     boolean recordPatternSupport = structClass.hasRecordPatternSupport();
-    boolean trace = DecompilerContext.getLogger().accepts(org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
-    if (trace) {
-      DecompilerContext.getLogger().writeMessage("PatternHelper: start, recordPatternSupport=" + recordPatternSupport, org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
-    }
     List<TempVarAssignmentItem> tempVarAssignments = new ArrayList<>();
 
     boolean[] recordPatternFound = new boolean[]{false};
     List<Runnable> runnables = replaceAssignmentsWithPatternVariables(statement, new HashSet<>(), tempVarAssignments, recordPatternSupport, recordPatternFound);
-    if (trace) {
-      DecompilerContext.getLogger().writeMessage("PatternHelper: actions=" + runnables.size() + " recordPatternFound=" + recordPatternFound[0] +
-                                                " tempAssignments=" + tempVarAssignments.size(),
-                                                org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
-    }
     if (runnables.isEmpty() || (!recordPatternFound[0] && !SwitchHelper.checkAssignmentsToDelete(statement, tempVarAssignments))) {
-      if (trace) {
-        DecompilerContext.getLogger().writeMessage("PatternHelper: bail out (no actions or assignments check failed)",
-                                                  org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
-      }
       return;
     }
     for (Runnable runnable : runnables) {
@@ -92,31 +79,18 @@ public final class PatternHelper {
                                                                        boolean recordPatternSupport,
                                                                        boolean[] recordPatternFound) {
     ArrayList<Runnable> actions = new ArrayList<>();
-    boolean trace = DecompilerContext.getLogger().accepts(org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
     if (statement instanceof IfStatement) {
       IfStatement ifStatement = (IfStatement)statement;
       if (usedIfStatements.contains(ifStatement)) {
-        if (trace) {
-          DecompilerContext.getLogger().writeMessage("PatternHelper: skip ifStatement already used id=" + ifStatement.id,
-                                                    org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
-        }
         return new ArrayList<>();
       }
       FunctionExprent instanceOfExprent = findInstanceofExprent(ifStatement);
       if (instanceOfExprent == null) {
-        if (trace) {
-          DecompilerContext.getLogger().writeMessage("PatternHelper: no instanceof in ifStatement id=" + ifStatement.id,
-                                                    org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
-        }
         return new ArrayList<>();
       }
 
       List<Exprent> operands = instanceOfExprent.getLstOperands();
       if (operands.size() != 2 || operands.get(0).type != Exprent.EXPRENT_VAR || operands.get(1).type != Exprent.EXPRENT_CONST) {
-        if (trace) {
-          DecompilerContext.getLogger().writeMessage("PatternHelper: instanceof operands mismatch id=" + ifStatement.id,
-                                                    org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
-        }
         return new ArrayList<>();
       }
       VarExprent operand = (VarExprent)operands.get(0);
@@ -132,24 +106,11 @@ public final class PatternHelper {
         patternVarCandidate = findInitPatternVarCandidate(statementToChange, operand, checkType, recordPatternSupport, statementToChange);
       }
       if (patternVarCandidate == null) {
-        if (trace) {
-          DecompilerContext.getLogger().writeMessage("PatternHelper: no candidate for ifStatement id=" + ifStatement.id,
-                                                    org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
-        }
         return new ArrayList<>();
       }
       tempVarAssignments.addAll(patternVarCandidate.getTempAssignments());
       usedIfStatements.add(ifStatement);
       usedIfStatements.addAll(patternVarCandidate.getUsedIfStatement());
-      if (trace && !patternVarCandidate.getUsedIfStatement().isEmpty()) {
-        StringBuilder ids = new StringBuilder();
-        for (IfStatement used : patternVarCandidate.getUsedIfStatement()) {
-          if (ids.length() > 0) ids.append(',');
-          ids.append(used.id);
-        }
-        DecompilerContext.getLogger().writeMessage("PatternHelper: mark used if ids=" + ids,
-                                                  org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
-      }
       if (patternVarCandidate.getVarExprent() instanceof RecordVarExprent) {
         recordPatternFound[0] = true;
       }
@@ -179,16 +140,11 @@ public final class PatternHelper {
                                                               @NotNull ConstExprent checkType,
                                                               boolean recordPatternSupport,
                                                               @NotNull Statement topLevelStatement) {
-    boolean trace = DecompilerContext.getLogger().accepts(org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
     if (ifElseStat instanceof BasicBlockStatement) {
       BasicBlockStatement basicBlockStatement = (BasicBlockStatement)ifElseStat;
       //check that cast correct and get the last assignment
       PatternVariableCandidate candidate = findSimpleCandidateFromIfStat(ifElseStat, operand, checkType, topLevelStatement);
       if (candidate == null) {
-        if (trace) {
-          DecompilerContext.getLogger().writeMessage("PatternHelper: no simple candidate for operand=" + operand +
-                                                    " checkType=" + checkType, org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
-        }
         return null;
       }
       //check what if it is record patterns
@@ -196,16 +152,8 @@ public final class PatternHelper {
         //collect everything from zero to check
         PatternVariableCandidate recordCandidate = findInitRecordPatternCandidate(basicBlockStatement, operand, candidate.getVarExprent());
         if (recordCandidate != null) {
-          if (trace) {
-            DecompilerContext.getLogger().writeMessage("PatternHelper: record pattern candidate found for operand=" + operand,
-                                                      org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
-          }
           recordCandidate.getTempVarAssignments().addAll(candidate.getTempVarAssignments());
           return recordCandidate;
-        }
-        if (trace) {
-          DecompilerContext.getLogger().writeMessage("PatternHelper: record pattern candidate NOT found for operand=" + operand,
-                                                    org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
         }
       }
       return candidate;
@@ -320,20 +268,13 @@ public final class PatternHelper {
 
   private static @Nullable PatternVariableCandidate findRecordPatternCandidate(@NotNull Statement parent,
                                                                                @NotNull VarTracker varTracker) {
-    boolean trace = DecompilerContext.getLogger().accepts(org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
     if (!(parent instanceof SequenceStatement)) {
-      if (trace) {
-        DecompilerContext.getLogger().writeMessage("PatternHelper: record pattern parent not sequence", org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
-      }
       return null;
     }
     Set<IfStatement> ifStatements = new HashSet<>();
 
     VBStyleCollection<Statement, Integer> stats = parent.getStats();
     if (stats.size() < 3) {
-      if (trace) {
-        DecompilerContext.getLogger().writeMessage("PatternHelper: record pattern stats too small=" + stats.size(), org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
-      }
       return null;
     }
     int i = 0;
@@ -353,25 +294,16 @@ public final class PatternHelper {
         if (i != 0) {
           break;
         }
-        if (trace) {
-          DecompilerContext.getLogger().writeMessage("PatternHelper: record pattern initial pair mismatch", org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
-        }
         return null;
       }
       BasicBlockStatement basicBlockStatement = (BasicBlockStatement)first;
       CatchStatement catchStatement = (CatchStatement)second;
       //the first block must contain only assignments which can be gathered
       if (!processFullBlock(varTracker, basicBlockStatement)) {
-        if (trace) {
-          DecompilerContext.getLogger().writeMessage("PatternHelper: record pattern full block failed", org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
-        }
         return null;
       }
       //a catch section with call for a record component
       if (!processCatchStatement(varTracker, catchStatement)) {
-        if (trace) {
-          DecompilerContext.getLogger().writeMessage("PatternHelper: record pattern catch failed", org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
-        }
         return null;
       }
       i += 2;
@@ -393,10 +325,6 @@ public final class PatternHelper {
       IfStatement ifStatement = (IfStatement)stats.get(nextIndex);
       PatternVariableCandidate nestedCandidate = findRecursivelyInstanceOfIfStatement(stats.get(nextIndex), varTracker, tempVarAssignmentItems);
       if (nestedCandidate != null) {
-        if (trace) {
-          DecompilerContext.getLogger().writeMessage("PatternHelper: record pattern uses nested if id=" + ifStatement.id,
-                                                    org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
-        }
         ifStatements.add(ifStatement);
         ifStatements.addAll(nestedCandidate.getUsedIfStatement());
         tempVarAssignmentItems.addAll(varTracker.getTempItems());
@@ -472,13 +400,9 @@ public final class PatternHelper {
    */
   private static boolean processCatchStatement(@NotNull VarTracker tracker,
                                                @NotNull CatchStatement statement) {
-    boolean trace = DecompilerContext.getLogger().accepts(org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
     Statement tryBody = statement.getFirst();
     if (tryBody == null || tryBody.getStats() == null || !tryBody.getStats().isEmpty() ||
         tryBody.getExprents() == null || tryBody.getExprents().size() != 1) {
-      if (trace) {
-        DecompilerContext.getLogger().writeMessage("PatternHelper: catch body shape mismatch", org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
-      }
       return false;
     }
     Exprent body = tryBody.getExprents().get(0);
@@ -495,38 +419,23 @@ public final class PatternHelper {
       invocationExprent = (InvocationExprent)body;
     }
     if (invocationExprent == null) {
-      if (trace) {
-        DecompilerContext.getLogger().writeMessage("PatternHelper: catch no invocation", org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
-      }
       return false;
     }
     Exprent qualifier = invocationExprent.getInstance();
     if (qualifier == null ||
         invocationExprent.isStatic() ||
         !(invocationExprent.getParameters() != null && invocationExprent.getParameters().isEmpty())) {
-      if (trace) {
-        DecompilerContext.getLogger().writeMessage("PatternHelper: catch invocation qualifier/params mismatch", org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
-      }
       return false;
     }
     RecordVarExprent recordVarExprent = tracker.getRecord(qualifier);
     if (recordVarExprent == null) {
-      if (trace) {
-        DecompilerContext.getLogger().writeMessage("PatternHelper: catch qualifier not tracked", org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
-      }
       return false;
     }
     if (statement.getStats().size() != 2) {
-      if (trace) {
-        DecompilerContext.getLogger().writeMessage("PatternHelper: catch stats size != 2", org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
-      }
       return false;
     }
     Statement catchSection = statement.getStats().get(1);
     if (!(catchSection.getStats().isEmpty() && catchSection.getExprents() != null)) {
-      if (trace) {
-        DecompilerContext.getLogger().writeMessage("PatternHelper: catch section shape mismatch", org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
-      }
       return false;
     }
     if (!((catchSection.getExprents().size() == 1) ||
@@ -550,9 +459,6 @@ public final class PatternHelper {
       validThrow = true;
     }
     if (!validThrow) {
-      if (trace) {
-        DecompilerContext.getLogger().writeMessage("PatternHelper: catch missing MatchException throw", org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
-      }
       return false;
     }
 
