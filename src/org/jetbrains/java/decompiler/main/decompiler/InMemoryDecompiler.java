@@ -3,6 +3,7 @@ package org.jetbrains.java.decompiler.main.decompiler;
 import org.jetbrains.java.decompiler.main.Fernflower;
 import org.jetbrains.java.decompiler.main.extern.IBytecodeProvider;
 import org.jetbrains.java.decompiler.main.extern.IFernflowerLogger;
+import org.jetbrains.java.decompiler.main.extern.IFernflowerPreferences;
 import org.jetbrains.java.decompiler.main.extern.IResultSaver;
 
 import java.io.IOException;
@@ -16,16 +17,18 @@ import java.util.jar.Manifest;
 public class InMemoryDecompiler {
 
   public static void main(String[] args) throws IOException {
-    byte[] bytes = Files.readAllBytes(Paths.get(args[0]));
-    System.out.println(decompileClass(bytes));
   }
 
-  public static String decompileClass(byte[] classBytes) {
-    return decompileClass(classBytes, null, null);
-  }
-
-  public static String decompileClass(byte[] classBytes, Map<String, Object> options, IFernflowerLogger logger) {
-    if (classBytes == null) {
+  /**
+   *
+   * @param classes className to bytecode, class name is in format: com.example.A
+   * @param entrypoint com.example.A
+   * @param options null
+   * @param logger null
+   * @return
+   */
+  public static String decompileClass(Map<String, byte[]> classes, String entrypoint, Map<String, Object> options, IFernflowerLogger logger) {
+    if (classes.get(entrypoint) == null) {
       throw new IllegalArgumentException("classBytes must not be null");
     }
     Map<String, Object> safeOptions = options == null ? new HashMap<>() : options;
@@ -35,10 +38,14 @@ public class InMemoryDecompiler {
     IBytecodeProvider provider = (externalPath, internalPath) -> {
       throw new IOException("Bytecode provider is not available for in-memory decompilation");
     };
-
     Fernflower fernflower = new Fernflower(provider, saver, safeOptions, safeLogger);
     try {
-      fernflower.addData("", "InMemory.class", classBytes, true);
+      for (Map.Entry<String, byte[]> stringEntry : classes.entrySet()) {
+        String className = stringEntry.getKey().replace(".", "/");
+        className = className.endsWith(".class") ? className : className + ".class";
+        byte[] classBytes = stringEntry.getValue();
+        fernflower.addData("", className, classBytes, true);
+      }
       fernflower.decompileContext();
     }
     catch (IOException e) {
@@ -47,8 +54,7 @@ public class InMemoryDecompiler {
     finally {
       fernflower.clearContext();
     }
-
-    return saver.getSingleResult();
+    return saver.getSingleResult(entrypoint);
   }
 
 
@@ -99,11 +105,9 @@ public class InMemoryDecompiler {
       // No-op for in-memory output.
     }
 
-    public String getSingleResult() {
-      if (results.isEmpty()) {
-        return null;
-      }
-      return results.values().iterator().next();
+    public String getSingleResult(String className) {
+      String sourceName = className.replace(".", "/") + ".java";
+      return results.get(sourceName);
     }
   }
 
