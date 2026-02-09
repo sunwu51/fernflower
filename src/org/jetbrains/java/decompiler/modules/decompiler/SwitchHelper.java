@@ -77,18 +77,7 @@ public final class SwitchHelper {
     if (cl.hasRecordPatternSupport() && DecompilerContext.getOption(IFernflowerPreferences.CONVERT_PATTERN_SWITCH)) {
       recognizers.add(new SwitchPatternHelper.JavacReferenceRecognizer());
     }
-    boolean trace = DecompilerContext.getLogger().accepts(org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
-    if (trace) {
-      DecompilerContext.getLogger().writeMessage("SwitchHelper: simplifySwitchesOnReferences start, recordPatternSupport=" +
-                                                cl.hasRecordPatternSupport() + " convertPatternSwitch=" +
-                                                DecompilerContext.getOption(IFernflowerPreferences.CONVERT_PATTERN_SWITCH),
-                                                org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
-    }
     collectSwitchesOn(root, recognizers, candidates, new HashSet<>());
-    if (trace) {
-      DecompilerContext.getLogger().writeMessage("SwitchHelper: candidates=" + candidates.size(),
-                                                org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity.TRACE);
-    }
     if (candidates.isEmpty()) return;
     List<TempVarAssignmentItem> tempVarAssignments = new ArrayList<>();
     candidates.forEach(candidate -> tempVarAssignments.addAll(candidate.prepareTempAssignments()));

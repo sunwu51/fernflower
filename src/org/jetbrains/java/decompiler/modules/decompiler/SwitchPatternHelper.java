@@ -235,8 +235,12 @@ public final class SwitchPatternHelper {
         return null;
       }
       VarExprent instanceVarExprent = (VarExprent)instance;
-      if (!isBootstrapSwitch(myRootSwitchStatement.getHeadExprent())) return null;
-      if (checkBootstrap()) return null;
+      if (!isBootstrapSwitch(myRootSwitchStatement.getHeadExprent())) {
+        return null;
+      }
+      if (checkBootstrap()) {
+        return null;
+      }
 
       List<Exprent> parameters = mySwitchSelector.getParameters();
       if (!instance.equals(parameters.get(0))) {
@@ -244,7 +248,9 @@ public final class SwitchPatternHelper {
       }
       Exprent typeVar = parameters.get(1);
       Root root = getRoot();
-      if (root == null) return null;
+      if (root == null) {
+        return null;
+      }
 
       if (root.firstExprents() == null) {
         return null;
@@ -400,59 +406,64 @@ public final class SwitchPatternHelper {
       //    DoStatement
       //      Switch
       boolean matched = false;
-      if (myVarTracker != null) {
-        Statement parent = myRootSwitchStatement.getParent();
-        if (parent instanceof DoStatement) {
-          DoStatement nestedDoStatement = (DoStatement)parent;
-          if (nestedDoStatement.getConditionExprent() == null) {
-            Statement parent2 = nestedDoStatement.getParent();
-            if (parent2 instanceof DoStatement) {
-              DoStatement upperDoStatement = (DoStatement)parent2;
-              if (upperDoStatement.getConditionExprent() == null) {
-                Statement parent3 = upperDoStatement.getParent();
-                if (parent3 instanceof SequenceStatement) {
-                  SequenceStatement sequenceStatement = (SequenceStatement)parent3;
-                  if (sequenceStatement.getStats().size() >= 2 &&
-                      sequenceStatement.getStats().get(sequenceStatement.getStats().size() - 1) == upperDoStatement &&
-                      sequenceStatement.getStats().get(sequenceStatement.getStats().size() - 2) instanceof BasicBlockStatement) {
-                    BasicBlockStatement basicBlockStatement = (BasicBlockStatement)sequenceStatement.getStats().get(sequenceStatement.getStats().size() - 2);
-                    firstExprents = basicBlockStatement.getExprents();
-                    first = basicBlockStatement;
-                    doParentStatement = nestedDoStatement;
-                    matched = true;
-                  }
-                  //possible structure (only for nested switch):
-                  //SequenceStatement
-                  //  Switch
-                  //    default
-                  //    case
-                  //  DoStatement
-                  //    DoStatement
-                  //      Switch
-                  if (!matched &&
-                      sequenceStatement.getStats().size() == 2 && sequenceStatement.getStats().get(1) == upperDoStatement &&
-                      sequenceStatement.getStats().get(0) instanceof SwitchStatement) {
-                    SwitchStatement upperSwitchStatement = (SwitchStatement)sequenceStatement.getStats().get(0);
-                    if (upperSwitchStatement.getCaseStatements().size() == 2) {
-                      int indexDefault = upperSwitchStatement.getCaseEdges().get(0).contains(upperSwitchStatement.getDefaultEdge()) ? 0 :
-                                         (upperSwitchStatement.getCaseEdges().get(1).contains(upperSwitchStatement.getDefaultEdge()) ? 1 : -1);
-                      if (indexDefault == -1) {
-                        return null;
-                      }
-                      int other = indexDefault == 0 ? 1 : 0;
-                      Statement statement = upperSwitchStatement.getCaseStatements().get(other);
-                      if (statement.getStats().isEmpty()) {
-                        return null;
-                      }
-
-                      Statement last = statement.getStats().get(statement.getStats().size() - 1);
-                      firstExprents = last.getExprents();
-                      first = last;
-                      doParentStatement = nestedDoStatement;
-                      matched = true;
-                    }
-                  }
+      if (myVarTracker != null && myRootSwitchStatement.getParent() instanceof DoStatement) {
+        DoStatement nestedDoStatement = (DoStatement)myRootSwitchStatement.getParent();
+        if (nestedDoStatement.getConditionExprent() == null &&
+            nestedDoStatement.getParent() instanceof DoStatement) {
+          DoStatement upperDoStatement = (DoStatement)nestedDoStatement.getParent();
+          if (upperDoStatement.getConditionExprent() == null &&
+              upperDoStatement.getParent() instanceof SequenceStatement) {
+            SequenceStatement sequenceStatement = (SequenceStatement)upperDoStatement.getParent();
+            if (sequenceStatement.getStats().size() >= 2 &&
+                sequenceStatement.getStats().get(sequenceStatement.getStats().size() - 1) == upperDoStatement &&
+                sequenceStatement.getStats().get(sequenceStatement.getStats().size() - 2) instanceof BasicBlockStatement) {
+              BasicBlockStatement basicBlockStatement =
+                (BasicBlockStatement)sequenceStatement.getStats().get(sequenceStatement.getStats().size() - 2);
+              firstExprents = basicBlockStatement.getExprents();
+              first = basicBlockStatement;
+              doParentStatement = nestedDoStatement;
+              matched = true;
+            }
+          }
+        }
+      }
+      //possible structure (only for nested switch):
+      //SequenceStatement
+      //  Switch
+      //    default
+      //    case
+      //  DoStatement
+      //    DoStatement
+      //      Switch
+      if (!matched && myVarTracker != null && myRootSwitchStatement.getParent() instanceof DoStatement) {
+        DoStatement nestedDoStatement = (DoStatement)myRootSwitchStatement.getParent();
+        if (nestedDoStatement.getConditionExprent() == null &&
+            nestedDoStatement.getParent() instanceof DoStatement) {
+          DoStatement upperDoStatement = (DoStatement)nestedDoStatement.getParent();
+          if (upperDoStatement.getConditionExprent() == null &&
+              upperDoStatement.getParent() instanceof SequenceStatement) {
+            SequenceStatement sequenceStatement = (SequenceStatement)upperDoStatement.getParent();
+            if (sequenceStatement.getStats().size() == 2 &&
+                sequenceStatement.getStats().get(1) == upperDoStatement &&
+                sequenceStatement.getStats().get(0) instanceof SwitchStatement) {
+              SwitchStatement upperSwitchStatement = (SwitchStatement)sequenceStatement.getStats().get(0);
+              if (upperSwitchStatement.getCaseStatements().size() == 2) {
+                int indexDefault = upperSwitchStatement.getCaseEdges().get(0).contains(upperSwitchStatement.getDefaultEdge()) ? 0 :
+                                   (upperSwitchStatement.getCaseEdges().get(1).contains(upperSwitchStatement.getDefaultEdge()) ? 1 : -1);
+                if (indexDefault == -1) {
+                  return null;
                 }
+                int other = indexDefault == 0 ? 1 : 0;
+                Statement statement = upperSwitchStatement.getCaseStatements().get(other);
+                if (statement.getStats().isEmpty()) {
+                  return null;
+                }
+
+                Statement last = statement.getStats().get(statement.getStats().size() - 1);
+                firstExprents = last.getExprents();
+                first = last;
+                doParentStatement = nestedDoStatement;
+                matched = true;
               }
             }
           }
@@ -467,7 +478,7 @@ public final class SwitchPatternHelper {
       //  DoStatement
       //    SwitchStatement
       //  ....
-      else if (firstExprents == null || firstExprents.stream().noneMatch(t -> t instanceof AssignmentExprent)) {
+      if (!matched && (firstExprents == null || firstExprents.stream().noneMatch(t -> t instanceof AssignmentExprent))) {
         Statement parent = myRootSwitchStatement.getParent();
         DoStatement doStatement = null;
         if (parent instanceof DoStatement) {
@@ -479,15 +490,14 @@ public final class SwitchPatternHelper {
             doStatement = (DoStatement)parent2;
           }
         }
-        Statement upperParent = doStatement == null ? null : doStatement.getParent();
         if (doStatement == null ||
             doStatement.getLoopType() != DoStatement.LoopType.DO ||
             doStatement.getStats().size() != 1 ||
-            !(upperParent instanceof SequenceStatement) ||
-            ((SequenceStatement)upperParent).getExprents() != null) {
+            !(doStatement.getParent() instanceof SequenceStatement) ||
+            ((SequenceStatement)doStatement.getParent()).getExprents() != null) {
           return null;
         }
-        SequenceStatement upperStatement = (SequenceStatement)upperParent;
+        SequenceStatement upperStatement = (SequenceStatement)doStatement.getParent();
         VBStyleCollection<Statement, Integer> upperStatementStats = upperStatement.getStats();
         int indexOfDo = upperStatementStats.indexOf(doStatement);
         if (indexOfDo == -1 || indexOfDo == 0) {
@@ -993,6 +1003,7 @@ public final class SwitchPatternHelper {
                                                                        @NotNull Set<AssignmentExprent> assignmentExprents,
                                                                        @NotNull AssignmentExprent assignmentExprent) {
 
+      assignmentExprents.add(assignmentExprent);
       PatternVariableCandidate candidate = oldCandidate;
       Statement nextStatement = candidate.getNextStatement();
       if (nextStatement == newSequence) {
@@ -1031,7 +1042,6 @@ public final class SwitchPatternHelper {
             //something broken
             return null;
           }
-          assignmentExprents.add(assignmentExprent);
         }
         nextSeqStat.getStats().addWithKey(last, last.id);
       }

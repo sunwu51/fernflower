@@ -57,9 +57,8 @@ public final class PatternHelper {
     boolean recordPatternSupport = structClass.hasRecordPatternSupport();
     List<TempVarAssignmentItem> tempVarAssignments = new ArrayList<>();
 
-    boolean[] recordPatternFound = new boolean[]{false};
-    List<Runnable> runnables = replaceAssignmentsWithPatternVariables(statement, new HashSet<>(), tempVarAssignments, recordPatternSupport, recordPatternFound);
-    if (runnables.isEmpty() || (!recordPatternFound[0] && !SwitchHelper.checkAssignmentsToDelete(statement, tempVarAssignments))) {
+    List<Runnable> runnables = replaceAssignmentsWithPatternVariables(statement, new HashSet<>(), tempVarAssignments, recordPatternSupport);
+    if (runnables.isEmpty() || !SwitchHelper.checkAssignmentsToDelete(statement, tempVarAssignments)) {
       return;
     }
     for (Runnable runnable : runnables) {
@@ -76,54 +75,49 @@ public final class PatternHelper {
   private static List<Runnable> replaceAssignmentsWithPatternVariables(@NotNull Statement statement,
                                                                        @NotNull Set<IfStatement> usedIfStatements,
                                                                        @NotNull List<TempVarAssignmentItem> tempVarAssignments,
-                                                                       boolean recordPatternSupport,
-                                                                       boolean[] recordPatternFound) {
+                                                                       boolean recordPatternSupport) {
     ArrayList<Runnable> actions = new ArrayList<>();
     if (statement instanceof IfStatement) {
       IfStatement ifStatement = (IfStatement)statement;
-      if (usedIfStatements.contains(ifStatement)) {
-        return new ArrayList<>();
-      }
-      FunctionExprent instanceOfExprent = findInstanceofExprent(ifStatement);
-      if (instanceOfExprent == null) {
-        return new ArrayList<>();
-      }
+      if (!usedIfStatements.contains(ifStatement)) {
+        FunctionExprent instanceOfExprent = findInstanceofExprent(ifStatement);
+        if (instanceOfExprent == null) {
+          return new ArrayList<>();
+        }
 
-      List<Exprent> operands = instanceOfExprent.getLstOperands();
-      if (operands.size() != 2 || operands.get(0).type != Exprent.EXPRENT_VAR || operands.get(1).type != Exprent.EXPRENT_CONST) {
-        return new ArrayList<>();
-      }
-      VarExprent operand = (VarExprent)operands.get(0);
-      ConstExprent checkType = (ConstExprent)operands.get(1);
+        List<Exprent> operands = instanceOfExprent.getLstOperands();
+        if (operands.size() != 2 || operands.get(0).type != Exprent.EXPRENT_VAR || operands.get(1).type != Exprent.EXPRENT_CONST) {
+          return new ArrayList<>();
+        }
+        VarExprent operand = (VarExprent)operands.get(0);
+        ConstExprent checkType = (ConstExprent)operands.get(1);
 
-      if (ifStatement.getIfstat() == null) {
-        return new ArrayList<>();
+        if (ifStatement.getIfstat() == null) {
+          return new ArrayList<>();
+        }
+        Statement statementToChange = ifStatement.getIfstat();
+        PatternVariableCandidate patternVarCandidate = findInitPatternVarCandidate(statementToChange, operand, checkType, recordPatternSupport, statementToChange);
+        if (patternVarCandidate == null && ifStatement.getElsestat() != null) {
+          statementToChange = ifStatement.getElsestat();
+          patternVarCandidate = findInitPatternVarCandidate(statementToChange, operand, checkType, recordPatternSupport, statementToChange);
+        }
+        if (patternVarCandidate == null) {
+          return new ArrayList<>();
+        }
+        tempVarAssignments.addAll(patternVarCandidate.getTempAssignments());
+        usedIfStatements.add(ifStatement);
+        usedIfStatements.addAll(patternVarCandidate.getUsedIfStatement());
+        PatternVariableCandidate finalPatternVarCandidate = patternVarCandidate;
+        Runnable action = ()-> {
+          operands.remove(1);
+          operands.add(finalPatternVarCandidate.getVarExprent());
+          finalPatternVarCandidate.getCleaner().run();
+        };
+        actions.add(action);
       }
-      Statement statementToChange = ifStatement.getIfstat();
-      PatternVariableCandidate patternVarCandidate = findInitPatternVarCandidate(statementToChange, operand, checkType, recordPatternSupport, statementToChange);
-      if (patternVarCandidate == null && ifStatement.getElsestat() != null) {
-        statementToChange = ifStatement.getElsestat();
-        patternVarCandidate = findInitPatternVarCandidate(statementToChange, operand, checkType, recordPatternSupport, statementToChange);
-      }
-      if (patternVarCandidate == null) {
-        return new ArrayList<>();
-      }
-      tempVarAssignments.addAll(patternVarCandidate.getTempAssignments());
-      usedIfStatements.add(ifStatement);
-      usedIfStatements.addAll(patternVarCandidate.getUsedIfStatement());
-      if (patternVarCandidate.getVarExprent() instanceof RecordVarExprent) {
-        recordPatternFound[0] = true;
-      }
-      PatternVariableCandidate finalPatternVarCandidate = patternVarCandidate;
-      Runnable action = ()-> {
-        operands.remove(1);
-        operands.add(finalPatternVarCandidate.getVarExprent());
-        finalPatternVarCandidate.getCleaner().run();
-      };
-      actions.add(action);
     }
     for (Statement child : statement.getStats()) {
-      actions.addAll(0, replaceAssignmentsWithPatternVariables(child, usedIfStatements, tempVarAssignments, recordPatternSupport, recordPatternFound));
+      actions.addAll(0, replaceAssignmentsWithPatternVariables(child, usedIfStatements, tempVarAssignments, recordPatternSupport));
     }
     return actions;
   }
@@ -231,8 +225,7 @@ public final class PatternHelper {
 
     List<Exprent> castExprents = castExprent.getAllExprents();
     if (castExprents.size() != 2 ||
-        !(castExprents.get(0) instanceof VarExprent) ||
-        !sameVar(operand, (VarExprent)castExprents.get(0)) ||
+        !operand.equals(castExprents.get(0)) ||
         !checkType.equals(castExprents.get(1))) {
       return null;
     }
@@ -271,6 +264,7 @@ public final class PatternHelper {
     if (!(parent instanceof SequenceStatement)) {
       return null;
     }
+    if (checkRegularEdgesForRecordPattern(parent)) return null;
     Set<IfStatement> ifStatements = new HashSet<>();
 
     VBStyleCollection<Statement, Integer> stats = parent.getStats();
@@ -621,10 +615,6 @@ public final class PatternHelper {
       }
     }
     return false;
-  }
-
-  private static boolean sameVar(@NotNull VarExprent left, @NotNull VarExprent right) {
-    return left.getIndex() == right.getIndex() && left.getVersion() == right.getVersion();
   }
 
   static class PatternVariableCandidate {

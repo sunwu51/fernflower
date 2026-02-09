@@ -149,13 +149,9 @@ public class SingleClassesTest extends SingleClassesTestBase {
 
   //ecj doesn't support here, because it produces code with unnecessary assignments,
   //which can confuse decompiler with ordinary ones
-  @Ignore("Java 21 record/pattern output differs from Java 8")
   @Test public void testSimpleInstanceOfRecordPatternJavac() { doTest("pkg/TestSimpleInstanceOfRecordPatternJavac"); }
-  @Ignore("Java 21 record/pattern output differs from Java 8")
   @Test public void testComplexInstanceOfRecordPatternJavac() { doTest("pkg/TestComplexInstanceOfRecordPatternJavac"); }
-  @Ignore("Java 21 record/pattern output differs from Java 8")
   @Test public void testSwitchWithDeconstructionsWithoutNestedJavac() { doTest("pkg/TestSwitchWithDeconstructionsWithoutNestedJavac"); }
-  @Ignore("Java 21 record/pattern output differs from Java 8")
   @Test public void testSwitchNestedDeconstructionJavac() { doTest("pkg/TestSwitchNestedDeconstructionsJavac"); }
   @Test public void testSwitchWrapReturnJavac() { doTest("pkg/TestSwitchWrapReturnJavac"); }
 
