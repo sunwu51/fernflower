@@ -30,12 +30,9 @@ jobs:
       - name: Build jar
         run: ./gradlew jar
 
-      - name: Publish to GitHub Packages
-        run: ./gradlew publish
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Upload jar to release
         uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: build/libs/*.jar
