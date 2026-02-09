@@ -10,9 +10,8 @@ import org.jetbrains.java.decompiler.util.InterpreterUtil;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.function.Function;
 import java.util.jar.JarFile;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -23,6 +22,7 @@ public class StructContext {
   private final LazyLoader loader;
   private final Map<String, ContextUnit> units = new HashMap<>();
   private final Map<String, StructClass> classes = new HashMap<>();
+  private final List<Function<String, Object>> hooks = new ArrayList<>();
 
   public StructContext(IResultSaver saver, IDecompiledData decompiledData, LazyLoader loader) {
     this.saver = saver;
@@ -34,6 +34,7 @@ public class StructContext {
   }
 
   public StructClass getClass(String name) {
+    hooks.forEach(it -> it.apply(name));
     return classes.get(name);
   }
 
@@ -175,6 +176,10 @@ public class StructContext {
         classes.put(cl.qualifiedName, cl);
         unit.addClass(cl, cls);
         loader.addClassLink(cl.qualifiedName, new LazyLoader.Link(path, cls, data));
+  }
+
+  public void addHookWhenGet(Function<String, Object> func) {
+    hooks.add(func);
   }
 
   public Map<String, StructClass> getClasses() {

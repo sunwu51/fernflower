@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.Function;
 
 public class Fernflower implements IDecompiledData {
   private final StructContext structContext;
@@ -119,6 +120,10 @@ public class Fernflower implements IDecompiledData {
 
   public void addData(String path, String cls, byte[] data, boolean isOwn) throws IOException {
     structContext.addData(path, cls, data, isOwn);
+  }
+
+  public void addHookWhenGet(Function<String, Object> r) {
+    structContext.addHookWhenGet(r);
   }
 
   public void decompileContext() {

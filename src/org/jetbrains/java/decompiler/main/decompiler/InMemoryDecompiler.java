@@ -7,11 +7,10 @@ import org.jetbrains.java.decompiler.main.extern.IFernflowerPreferences;
 import org.jetbrains.java.decompiler.main.extern.IResultSaver;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.jar.Manifest;
 
 public class InMemoryDecompiler {
@@ -27,7 +26,7 @@ public class InMemoryDecompiler {
    * @param logger null
    * @return
    */
-  public static String decompileClass(Map<String, byte[]> classes, String entrypoint, Map<String, Object> options, IFernflowerLogger logger) {
+  public static String decompileClass(Map<String, byte[]> classes, String entrypoint, Map<String, Object> options, IFernflowerLogger logger, Function<String, Object> hookForGetInnerClass) {
     if (classes.get(entrypoint) == null) {
       throw new IllegalArgumentException("classBytes must not be null");
     }
@@ -46,6 +45,10 @@ public class InMemoryDecompiler {
         byte[] classBytes = stringEntry.getValue();
         fernflower.addData("", className, classBytes, true);
       }
+      fernflower.addHookWhenGet((path) -> {
+        String name = path.replace(".class", "").replace("/", ".");
+        return hookForGetInnerClass.apply(name);
+      });
       fernflower.decompileContext();
     }
     catch (IOException e) {
