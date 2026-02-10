@@ -14,7 +14,7 @@ java -jar fernflower.jar [-<option>=<value>]* [<source>]+ <destination>`
 
 # sdk usage
 
-你还可以通过依赖的方式引入的自己的项目(java>=8)中，对内容进行反编译。
+你还可以通过依赖的方式引入的自己的项目(java>=8)中，对内容进行反编译。 引入方式[jitpack](https://jitpack.io/#sunwu51/fernflower)找到最新的release版本即可。
 
 使用`InMemoryDecompiler#decompileClass`可以直接对字节码`byte[]`进行反编译，该函数需要指定多个参数。
 - `Map<String, byte[]> classes` 类名字节码映射，因为一个类可能有一些匿名类和内部类，都放到这个map中。
