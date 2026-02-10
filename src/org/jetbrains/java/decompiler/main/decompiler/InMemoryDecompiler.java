@@ -22,8 +22,9 @@ public class InMemoryDecompiler {
    *
    * @param classes className to bytecode, class name is in format: com.example.A
    * @param entrypoint com.example.A
-   * @param options null
-   * @param logger null
+   * @param options
+   * @param logger
+   * @param hookForGetInnerClass
    * @return
    */
   public static String decompileClass(Map<String, byte[]> classes, String entrypoint, Map<String, Object> options, IFernflowerLogger logger, Function<String, Object> hookForGetInnerClass) {
@@ -45,10 +46,12 @@ public class InMemoryDecompiler {
         byte[] classBytes = stringEntry.getValue();
         fernflower.addData("", className, classBytes, true);
       }
-      fernflower.addHookWhenGet((path) -> {
-        String name = path.replace(".class", "").replace("/", ".");
-        return hookForGetInnerClass.apply(name);
-      });
+      if (hookForGetInnerClass != null) {
+        fernflower.addHookWhenGet((path) -> {
+          String name = path.replace(".class", "").replace("/", ".");
+          return hookForGetInnerClass.apply(name);
+        });
+      }
       fernflower.decompileContext();
     }
     catch (IOException e) {
